@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Gradustry "Navy / Blue-Grey / Electric Blue" theme                     */
+/* Professional career-tech SaaS palette: deep navy + slate surfaces,     */
+/* electric-blue actions, calm status colors. Solid surfaces (no glass).  */
+/* ---------------------------------------------------------------------- */
+
+:root {
+  /* Light mode */
+  --background: 210 40% 98%;      /* #F8FAFC */
+  --foreground: 222 47% 11%;      /* #0F172A primary text */
+  --surface: 0 0% 100%;           /* #FFFFFF cards/navbar */
+  --surface-alt: 210 40% 96%;     /* #F1F5F9 hover bg */
+  --border: 214 32% 91%;          /* #E2E8F0 */
+  --border-hover: 213 97% 87%;    /* #BFDBFE card hover border */
+  --muted: 215 19% 35%;           /* #475569 secondary text */
+  --muted-foreground: 215 16% 47%; /* #64748B muted text */
+  --accent: 221 83% 53%;          /* #2563EB electric blue - primary */
+  --accent-2: 217 91% 60%;        /* #3B82F6 bright blue - secondary/hover */
+  --accent-hover: 224 76% 48%;    /* #1D4ED8 primary button hover */
+  --accent-foreground: 0 0% 100%;
+  --success: 160 84% 39%;         /* #10B981 */
+  --warning: 38 92% 50%;          /* #F59E0B */
+  --danger: 0 84% 60%;            /* #EF4444 */
+  --ring: 221 83% 53%;            /* #2563EB */
+  --ai-accent: 239 84% 67%;       /* #6366F1 */
+  --ai-bg: 226 100% 97%;          /* #EEF2FF */
+  --glass-bg: 0 0% 100%;
+  --glass-alpha: 1;
+  --glass-border-alpha: 1;
+}
+
+.dark {
+  --background: 223 49% 8%;       /* #0B1120 */
+  --foreground: 210 40% 98%;      /* #F8FAFC primary text */
+  --surface: 221 38% 15%;         /* #172033 cards */
+  --surface-alt: 217 33% 17%;     /* #1E293B elevated cards / hover bg */
+  --border: 215 25% 27%;          /* #334155 */
+  --border-hover: 221 83% 53%;    /* #3B82F6-ish hover border, uses accent-2 below */
+  --muted: 213 27% 84%;           /* #CBD5E1 secondary text */
+  --muted-foreground: 215 20% 65%; /* #94A3B8 muted text */
+  --accent: 217 91% 60%;          /* #3B82F6 electric blue - primary */
+  --accent-2: 213 94% 68%;        /* #60A5FA bright blue - secondary/hover */
+  --accent-hover: 213 94% 68%;    /* #60A5FA primary button hover */
+  --accent-foreground: 0 0% 100%;
+  --success: 158 64% 52%;         /* #34D399 */
+  --warning: 43 96% 56%;          /* #FBBF24 */
+  --danger: 0 91% 71%;            /* #F87171 */
+  --ring: 213 94% 68%;            /* #60A5FA */
+  --ai-accent: 239 84% 67%;       /* #6366F1 */
+  --ai-bg: 244 47% 20%;           /* #1E1B4B */
+  --glass-bg: 221 38% 15%;
+  --glass-alpha: 1;
+  --glass-border-alpha: 1;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-surface: hsl(var(--surface));
+  --color-surface-alt: hsl(var(--surface-alt));
+  --color-border: hsl(var(--border));
+  --color-border-hover: hsl(var(--border-hover));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-2: hsl(var(--accent-2));
+  --color-accent-hover: hsl(var(--accent-hover));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-danger: hsl(var(--danger));
+  --color-ring: hsl(var(--ring));
+  --color-ai-accent: hsl(var(--ai-accent));
+  --color-ai-bg: hsl(var(--ai-bg));
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+/* Vibrant gradient accent text, e.g. for hero headings/logo wordmarks */
+.text-gradient-accent {
+  background-image: linear-gradient(90deg, hsl(var(--accent)), hsl(var(--accent-2)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+::selection {
+  background-color: hsl(var(--accent) / 0.25);
+}
+
+/* subtle custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------------------------------------------------------------------- */
+/* Surfaces                                                                */
+/* Cards, sidebars and headers use solid navy/slate/white surfaces with   */
+/* subtle borders and shadows -- no glassmorphism/blur, per brand spec.   */
+/* ---------------------------------------------------------------------- */
+
+.glass,
+[class~="bg-surface"] {
+  background-color: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 2px 0 hsl(222 47% 11% / 0.04);
+}
+
+.glass-solid {
+  background-color: hsl(var(--surface));
+}
+
+/* Subtle focus/hover ring used behind primary actions / accent icons */
+.accent-glow {
+  box-shadow: 0 0 0 1px hsl(var(--accent) / 0.35), 0 4px 14px -4px hsl(var(--accent) / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

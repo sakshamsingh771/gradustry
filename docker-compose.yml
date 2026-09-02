@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gradustry
+      POSTGRES_PASSWORD: gradustry
+      POSTGRES_DB: gradustry
+    ports:
+      - "5432:5432"
+    volumes:
+      - gradustry_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gradustry"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://gradustry:gradustry@db:5432/gradustry
+      JWT_SECRET: change-me-to-a-long-random-string
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_PROXY_TARGET=http://backend:8000
+    ports:
+      - "5173:5173"
+
+volumes:
+  gradustry_pgdata:
