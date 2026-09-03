@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:16-alpine
@@ -28,6 +30,8 @@ services:
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
 
   frontend:
     build: ./frontend
@@ -38,6 +42,8 @@ services:
       - VITE_API_PROXY_TARGET=http://backend:8000
     ports:
       - "5173:5173"
+    volumes:
+      - ./frontend:/app
 
 volumes:
   gradustry_pgdata:
