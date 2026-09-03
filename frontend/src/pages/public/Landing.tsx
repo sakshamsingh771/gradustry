@@ -35,9 +35,9 @@ const aiFeatures = [
 ]
 
 const roleEntries = [
-  { icon: User, title: "Students", body: "Build skills → prove skills → get matched." },
-  { icon: School, title: "Colleges", body: "Track student skill development and readiness." },
-  { icon: Building2, title: "Industry", body: "Discover evidence-backed talent." },
+  { icon: User, title: "Students", body: "Build skills → prove skills → get matched.", role: "student" as const },
+  { icon: School, title: "Colleges", body: "Track student skill development and readiness.", role: "college" as const },
+  { icon: Building2, title: "Industry", body: "Discover evidence-backed talent.", role: "industry" as const },
 ]
 
 export default function Landing() {
@@ -293,20 +293,33 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ROLE-BASED ENTRY */}
+               {/* ROLE-BASED ENTRY */}
       <section className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="font-display text-2xl md:text-3xl">Built for everyone in the loop</h2>
         <div className="mt-8 grid gap-5 sm:grid-cols-3">
-          {roleEntries.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="rounded-xl border border-border bg-surface p-6 text-center">
-              <Icon className="mx-auto h-6 w-6 text-accent" />
-              <p className="mt-3 font-display text-lg">{title}</p>
-              <p className="mt-1 text-sm text-muted">{body}</p>
-              <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate(user ? roleHome[user.role] : "/register")}>
-                {user ? "Go to Dashboard" : "Get Started"}
-              </Button>
-            </div>
-          ))}
+          {roleEntries.map(({ icon: Icon, title, body, role }) => {
+            const isOwnRole = user?.role === role
+            return (
+              <div key={title} className="rounded-xl border border-border bg-surface p-6 text-center">
+                <Icon className="mx-auto h-6 w-6 text-accent" />
+                <p className="mt-3 font-display text-lg">{title}</p>
+                <p className="mt-1 text-sm text-muted">{body}</p>
+                {!user && (
+                  <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate("/register")}>
+                    Get Started
+                  </Button>
+                )}
+                {user && isOwnRole && (
+                  <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate(roleHome[role])}>
+                    Go to Dashboard
+                  </Button>
+                )}
+                {user && !isOwnRole && (
+                  <p className="mt-4 text-xs text-muted">Not available for your account type</p>
+                )}
+              </div>
+            )
+          })}
         </div>
       </section>
 

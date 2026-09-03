@@ -1,5 +1,6 @@
 from app.models.user import User, StudentProfile, CollegeProfile, IndustryProfile, RoleEnum  # noqa
 from app.models.skill import Skill, StudentSkill, SkillScoreHistory, Evidence  # noqa
+from app.models.profile_extras import Education 
 from app.models.assessment import (  # noqa
     Question,
     AssessmentAttempt,

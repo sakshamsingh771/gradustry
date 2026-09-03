@@ -5,8 +5,12 @@ from app.core.database import get_db
 from app.core.deps import require_roles
 from app.models.user import User, StudentProfile
 from app.models.skill import Skill, StudentSkill, Evidence, SkillScoreHistory
-from app.schemas.skill import EvidenceCreate, StudentSkillOut, SkillPassportOut
+from app.schemas.skill import (
+    EvidenceCreate, StudentSkillOut, SkillPassportOut,
+    StudentProfileOut, StudentProfileUpdate, ProfileStrengthOut, ActivityStatusOut,
+)
 from app.ai import evidence_engine
+from app.ai.profile_strength import compute_profile_strength
 
 router = APIRouter(prefix="/api/students", tags=["students"])
 
@@ -161,7 +165,75 @@ def verify_evidence(
         last_assessed_at=ss.last_assessed_at, evidence_count=len(ss.evidences), evidences=ss.evidences,
     )
 
+@router.get("/me/profile", response_model=StudentProfileOut)
+def get_my_profile(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("student")),
+):
+    profile = _get_student_profile(db, user)
+    skills = db.query(StudentSkill).filter(StudentSkill.student_id == profile.id).all()
+    evidence_count = sum(len(s.evidences) for s in skills)
 
+    from app.models.assessment import AssessmentAttempt
+    assessment_count = db.query(AssessmentAttempt).filter(
+        AssessmentAttempt.student_id == profile.id,
+        AssessmentAttempt.completed_at.isnot(None),
+    ).count()
+
+    strength = compute_profile_strength(
+        bio=profile.bio, branch=profile.branch, career_goal=profile.career_goal,
+        github_username=profile.github_username, skill_count=len(skills),
+        evidence_count=evidence_count, assessment_count=assessment_count,
+    )
+
+    return StudentProfileOut(
+        full_name=user.full_name, email=user.email, branch=profile.branch,
+        year_of_study=profile.year_of_study, career_goal=profile.career_goal,
+        bio=profile.bio, github_username=profile.github_username,
+        profile_visible=profile.profile_visible,
+        college_name=profile.college.college_name if profile.college else None,
+        strength=ProfileStrengthOut(**strength),
+    )
+
+
+@router.put("/me/profile", response_model=StudentProfileOut)
+def update_my_profile(
+    payload: StudentProfileUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("student")),
+):
+    profile = _get_student_profile(db, user)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(profile, field, value)
+    db.commit()
+    return get_my_profile(db=db, user=user)
+
+
+@router.get("/me/activity-status", response_model=ActivityStatusOut)
+def get_activity_status(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("student")),
+):
+    from app.models.ai import ResumeAnalysis, GitHubAnalysis
+    profile = _get_student_profile(db, user)
+
+    last_resume = db.query(ResumeAnalysis).filter(
+        ResumeAnalysis.student_id == profile.id
+    ).order_by(ResumeAnalysis.created_at.desc()).first()
+    github_analyses = db.query(GitHubAnalysis).filter(
+        GitHubAnalysis.student_id == profile.id
+    ).order_by(GitHubAnalysis.created_at.desc()).all()
+
+    resume_skills = len(last_resume.result_json.get("skills", [])) if last_resume else 0
+
+    return ActivityStatusOut(
+        resume_analyzed=last_resume is not None,
+        resume_last_analyzed_at=last_resume.created_at if last_resume else None,
+        resume_skills_detected=resume_skills,
+        github_connected=bool(profile.github_username) or len(github_analyses) > 0,
+        github_last_analyzed_at=github_analyses[0].created_at if github_analyses else None,
+        github_repos_analyzed=len(github_analyses),
+    )
 @router.get("/me/skill-growth/{skill_name}")
 def skill_growth(
     skill_name: str,

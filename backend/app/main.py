@@ -4,8 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Base, engine
 from app import models  # noqa: F401 - ensures all models are registered on Base
-from app.routers import auth, students, gap, assessments, opportunities, college, admin, ai as ai_router
-
+from app.routers import auth, students, gap, assessments, opportunities, college, admin, profile_extras, ai as ai_router
 app = FastAPI(title=settings.APP_NAME)
 
 app.add_middleware(
@@ -26,6 +25,7 @@ def on_startup():
 
 app.include_router(auth.router)
 app.include_router(students.router)
+app.include_router(profile_extras.router)
 app.include_router(gap.router)
 app.include_router(assessments.router)
 app.include_router(opportunities.router)

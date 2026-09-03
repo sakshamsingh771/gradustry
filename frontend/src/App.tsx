@@ -8,6 +8,7 @@ import PublicOpportunities from "@/pages/public/PublicOpportunities"
 
 import StudentLayout from "@/pages/student/StudentLayout"
 import StudentDashboard from "@/pages/student/Dashboard"
+import Profile from "@/pages/student/Profile"
 import SkillPassport from "@/pages/student/SkillPassport"
 import SkillGap from "@/pages/student/SkillGap"
 import EvidenceCenter from "@/pages/student/Evidence"
@@ -44,7 +45,8 @@ export default function App() {
       <Route path="/opportunities" element={<PublicOpportunities />} />
 
       <Route path="/student" element={<ProtectedRoute allow={["student"]}><StudentLayout /></ProtectedRoute>}>
-        <Route index element={<StudentDashboard />} />
+               <Route index element={<StudentDashboard />} />
+        <Route path="profile" element={<Profile />} />
         <Route path="passport" element={<SkillPassport />} />
         <Route path="gap" element={<SkillGap />} />
         <Route path="evidence" element={<EvidenceCenter />} />
