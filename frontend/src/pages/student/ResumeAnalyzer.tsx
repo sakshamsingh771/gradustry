@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { aiApi } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,51 @@ import { Upload, FileText } from "lucide-react"
 import { toast } from "sonner"
 
 interface Skill { name: string; confidence: number; evidence: string }
+
+function ResumeHistory() {
+  const qc = useQueryClient()
+  const historyQ = useQuery({ queryKey: ["resume-history"], queryFn: () => aiApi.resumeHistory().then((r) => r.data) })
+
+  const download = async (id: number, filename: string) => {
+    try {
+      const res = await aiApi.downloadResume(id)
+      const url = URL.createObjectURL(res.data as Blob)
+      const a = document.createElement("a")
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error("Couldn't download this file — it may not have been stored.")
+    }
+  }
+
+  const deleteMut = useMutation({
+    mutationFn: (id: number) => aiApi.deleteResume(id),
+    onSuccess: () => { toast.success("Resume removed"); qc.invalidateQueries({ queryKey: ["resume-history"] }) },
+    onError: () => toast.error("Couldn't remove this resume"),
+  })
+
+  if (!historyQ.data?.length) return null
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>Your resumes</CardTitle><CardDescription>Previously analyzed files</CardDescription></CardHeader>
+      <CardContent className="space-y-2">
+        {historyQ.data.map((r) => (
+          <div key={r.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <p className="text-sm font-medium">{r.filename}</p>
+              <p className="text-xs text-muted">{new Date(r.created_at).toLocaleDateString()} · {r.skills_detected} skill(s) detected</p>
+            </div>
+            <div className="flex shrink-0 gap-3">
+              {r.downloadable && <button className="text-xs text-accent" onClick={() => download(r.id, r.filename)}>Download</button>}
+              <button className="text-xs text-danger" onClick={() => { if (confirm("Delete this resume analysis?")) deleteMut.mutate(r.id) }}>Delete</button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function ResumeAnalyzer() {
   const qc = useQueryClient()
@@ -20,6 +65,7 @@ export default function ResumeAnalyzer() {
     onSuccess: (data) => {
       setResult(data)
       setSelected(new Set(data.extraction.skills.map((s: Skill) => s.name)))
+      qc.invalidateQueries({ queryKey: ["resume-history"] })
     },
     onError: () => toast.error("Couldn't analyze that file"),
   })
@@ -43,6 +89,8 @@ export default function ResumeAnalyzer() {
         <h1 className="font-display text-2xl">AI Resume Analyzer</h1>
         <p className="text-muted">Upload your resume — AI extracts skills for you to review, not auto-verify.</p>
       </div>
+
+      <ResumeHistory />
 
       {!result && (
         <Card>

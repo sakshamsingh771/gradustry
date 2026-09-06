@@ -16,6 +16,13 @@ const EVIDENCE_TYPES = [
   { value: "project", label: "Project submission" },
 ]
 
+const STATUS_LABEL: Record<string, { label: string; caption: string }> = {
+  verified: { label: "Admin-reviewed", caption: "An admin checked this and confirmed it looks legitimate — not an external authenticity check." },
+  pending_review: { label: "Pending review", caption: "Self-submitted, not yet reviewed." },
+  needs_review: { label: "Needs review", caption: "Flagged for a closer look before it counts fully." },
+  suspicious: { label: "Suspicious", caption: "Flagged as inconsistent or implausible." },
+}
+
 export default function EvidenceCenter() {
   const qc = useQueryClient()
   const passportQ = useQuery({ queryKey: ["skill-passport"], queryFn: () => studentApi.skillPassport().then((r) => r.data) })
@@ -87,10 +94,12 @@ export default function EvidenceCenter() {
               <div key={e.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
                   <p className="text-sm font-medium">{e.title}</p>
+                  
                   <p className="text-xs text-muted">{e.skill_name} · {e.type.replace("_", " ")}</p>
+                  <p className="text-xs text-muted">{(STATUS_LABEL[e.status] ?? { caption: "" }).caption}</p>
                 </div>
                 <Badge variant={e.status === "verified" ? "success" : e.status === "suspicious" ? "danger" : "outline"}>
-                  {e.status.replace("_", " ")}
+                  {(STATUS_LABEL[e.status] ?? { label: e.status.replace("_", " ") }).label}
                 </Badge>
               </div>
             ))}

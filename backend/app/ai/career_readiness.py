@@ -24,6 +24,27 @@ WEIGHTS = {
     "consistency": 0.05,
 }
 
+def compute_for_student(db, profile) -> dict:
+    from app.models.skill import StudentSkill
+    from app.models.assessment import AssessmentAttempt
+    from app.models.opportunity import Application
+
+    rows = db.query(StudentSkill).filter(StudentSkill.student_id == profile.id).all()
+    student_skills = [
+        {"proficiency_score": r.proficiency_score, "confidence_level": r.confidence_level,
+         "evidence_count": len(r.evidences), "evidences": [{"type": e.type} for e in r.evidences]}
+        for r in rows
+    ]
+    recent_attempts = db.query(AssessmentAttempt).filter(
+        AssessmentAttempt.student_id == profile.id, AssessmentAttempt.completed_at.isnot(None)
+    ).order_by(AssessmentAttempt.completed_at.desc()).limit(10).all()
+    assessment_scores = [a.score_percent for a in recent_attempts]
+    applications = db.query(Application).filter(Application.student_id == profile.id).all()
+    feedback_scores = [a.feedback.technical_skill for a in applications if a.feedback]
+    history_dates = []
+    for r in rows:
+        history_dates += [h.recorded_at for h in r.history]
+    return compute_readiness_breakdown(student_skills, assessment_scores, feedback_scores, history_dates)
 
 def compute_readiness_breakdown(
     student_skills: list[dict],       # [{proficiency_score, confidence_level, evidence_count, evidences:[{type,status,created_at}]}]

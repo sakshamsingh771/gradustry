@@ -1,12 +1,31 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
-from app.core.config import settings
-from app.core.database import Base, engine
-from app import models  # noqa: F401 - ensures all models are registered on Base
-from app.routers import auth, students, gap, assessments, opportunities, college, admin, profile_extras, ai as ai_router
+from app.core.config import settings, assert_production_safe
+from app.core.rate_limit import limiter
+from app.routers import (
+    admin,
+    ai as ai_router,
+    assessments,
+    auth,
+    college,
+    gap,
+    opportunities,
+    profile_extras,
+    students,
+)
+
+assert_production_safe()
+
 app = FastAPI(title=settings.APP_NAME)
+app.state.limiter = limiter
 
+# Exception Handlers
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -15,14 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-def on_startup():
-    # For the hackathon MVP we auto-create tables; use Alembic migrations
-    # (see /alembic) for anything beyond local/demo use.
-    Base.metadata.create_all(bind=engine)
-
-
+# Routers
 app.include_router(auth.router)
 app.include_router(students.router)
 app.include_router(profile_extras.router)

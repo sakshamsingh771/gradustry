@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import require_roles
 from app.models.user import User, StudentProfile, CollegeProfile, IndustryProfile
-from app.models.skill import Evidence
+from app.models.skill import Evidence, SkillScoreHistory
+from app.ai import evidence_engine
 from app.models.opportunity import Opportunity, Application
 from app.models.assessment import CareerRole, Question
 
@@ -50,9 +51,21 @@ def moderate_evidence(
     evidence = db.query(Evidence).filter(Evidence.id == evidence_id).first()
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence not found")
-    evidence.status = new_status
+        evidence.status = new_status
+    evidence.signal_score = evidence_engine.score_single_evidence(evidence.type, new_status)
+    db.flush()
+
+    student_skill = evidence.student_skill
+    evidences = [{"type": e.type, "status": e.status, "signal_score": e.signal_score} for e in student_skill.evidences]
+    result = evidence_engine.recompute_student_skill(evidences)
+    student_skill.proficiency_score = result["proficiency_score"]
+    student_skill.confidence_level = result["confidence_level"]
+    db.add(SkillScoreHistory(student_skill_id=student_skill.id, score=result["proficiency_score"],
+                              reason=f"admin moderation: {evidence.title} -> {new_status}"))
     db.commit()
-    return {"detail": "Updated"}
+    return {"detail": "Updated", "evidence_status": evidence.status,
+            "skill_proficiency_score": student_skill.proficiency_score,
+            "skill_confidence_level": student_skill.confidence_level}
 
 
 @router.get("/colleges")

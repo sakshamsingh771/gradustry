@@ -9,7 +9,7 @@ from app.schemas.skill import (
     EvidenceCreate, StudentSkillOut, SkillPassportOut,
     StudentProfileOut, StudentProfileUpdate, ProfileStrengthOut, ActivityStatusOut,
 )
-from app.ai import evidence_engine
+from app.ai import evidence_engine, career_readiness
 from app.ai.profile_strength import compute_profile_strength
 
 router = APIRouter(prefix="/api/students", tags=["students"])
@@ -87,10 +87,7 @@ def get_skill_passport(
     skills = db.query(StudentSkill).filter(StudentSkill.student_id == profile.id).all()
 
     skill_outs = []
-    total, count = 0.0, 0
     for s in skills:
-        total += s.proficiency_score
-        count += 1
         skill_outs.append(StudentSkillOut(
             id=s.id,
             skill_name=s.skill.name,
@@ -102,7 +99,7 @@ def get_skill_passport(
             evidences=s.evidences,
         ))
 
-    readiness = round(total / count, 1) if count else 0.0
+    readiness = career_readiness.compute_for_student(db, profile)["overall_readiness"]
     return SkillPassportOut(
         student_id=profile.id,
         full_name=user.full_name,
@@ -142,28 +139,6 @@ def add_evidence(
         last_assessed_at=ss.last_assessed_at, evidence_count=len(ss.evidences), evidences=ss.evidences,
     )
 
-
-@router.post("/me/evidence/{evidence_id}/verify", response_model=StudentSkillOut)
-def verify_evidence(
-    evidence_id: int,
-    db: Session = Depends(get_db),
-    user: User = Depends(require_roles("student", "admin")),
-):
-    """MVP self-serve / admin verification step (stands in for OCR/cert-ID lookup)."""
-    evidence = db.query(Evidence).filter(Evidence.id == evidence_id).first()
-    if not evidence:
-        raise HTTPException(status_code=404, detail="Evidence not found")
-    evidence.status = "verified"
-    evidence.signal_score = evidence_engine.score_single_evidence(evidence.type, "verified")
-    db.commit()
-
-    ss = evidence.student_skill
-    _recompute_and_save(db, ss, reason=f"evidence verified: {evidence.title}")
-    return StudentSkillOut(
-        id=ss.id, skill_name=ss.skill.name, category=ss.skill.category,
-        proficiency_score=ss.proficiency_score, confidence_level=ss.confidence_level,
-        last_assessed_at=ss.last_assessed_at, evidence_count=len(ss.evidences), evidences=ss.evidences,
-    )
 
 @router.get("/me/profile", response_model=StudentProfileOut)
 def get_my_profile(
@@ -234,6 +209,8 @@ def get_activity_status(
         github_last_analyzed_at=github_analyses[0].created_at if github_analyses else None,
         github_repos_analyzed=len(github_analyses),
     )
+
+
 @router.get("/me/skill-growth/{skill_name}")
 def skill_growth(
     skill_name: str,

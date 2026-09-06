@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     APP_NAME: str = "Gradustry API"
     ENV: str = "development"
-
+     
     # Default to local SQLite so the project runs with zero external setup.
     # For a production-like run, set DATABASE_URL to a Postgres DSN, e.g.:
     # postgresql+psycopg2://gradustry:gradustry@localhost:5432/gradustry
@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     AI_MAX_RETRIES: int = 2
 
     GITHUB_TOKEN: str = ""  # optional, raises GitHub API rate limits
+
+    # Where uploaded files (resumes, etc.) are stored on local disk.
+    UPLOAD_DIR: str = "uploads"
+
+    # Login/registration rate limiting (slowapi).
+    RATE_LIMIT_ENABLED: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -68,3 +74,13 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def assert_production_safe() -> None:
+    """Called once at app startup. Refuses to boot with the default JWT
+    secret in production."""
+    if settings.ENV == "production" and settings.JWT_SECRET == "dev-secret-change-me-in-prod":
+        raise RuntimeError(
+            "Refusing to start: ENV=production but JWT_SECRET is still the default dev value. "
+            "Set a real, random JWT_SECRET (e.g. `openssl rand -hex 32`) before deploying."
+        )

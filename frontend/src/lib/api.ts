@@ -104,11 +104,60 @@ export type EducationInput = Omit<Education, "id" | "created_at">;
 
 export const educationApi = {
   list: () => api.get<Education[]>("/students/me/education"),
-  create: (payload: EducationInput) =>
-    api.post<Education>("/students/me/education", payload),
-  update: (id: number, payload: Partial<EducationInput>) =>
-    api.put<Education>(`/students/me/education/${id}`, payload),
+  create: (payload: EducationInput) => api.post<Education>("/students/me/education", payload),
+  update: (id: number, payload: Partial<EducationInput>) => api.put<Education>(`/students/me/education/${id}`, payload),
   remove: (id: number) => api.delete(`/students/me/education/${id}`),
+};
+
+export interface Project {
+  id: number; title: string; description: string; technologies: string;
+  github_url: string; live_url: string; role: string;
+  start_date: string | null; end_date: string | null; is_ongoing: boolean;
+  created_at: string; updated_at: string;
+}
+export type ProjectInput = Omit<Project, "id" | "created_at" | "updated_at">;
+export const projectApi = {
+  list: () => api.get<Project[]>("/students/me/projects"),
+  create: (payload: ProjectInput) => api.post<Project>("/students/me/projects", payload),
+  update: (id: number, payload: Partial<ProjectInput>) => api.put<Project>(`/students/me/projects/${id}`, payload),
+  remove: (id: number) => api.delete(`/students/me/projects/${id}`),
+};
+
+export interface Experience {
+  id: number; organization: string; role: string; description: string;
+  start_date: string | null; end_date: string | null; is_current: boolean; skills_used: string;
+  created_at: string; updated_at: string;
+}
+export type ExperienceInput = Omit<Experience, "id" | "created_at" | "updated_at">;
+export const experienceApi = {
+  list: () => api.get<Experience[]>("/students/me/experience"),
+  create: (payload: ExperienceInput) => api.post<Experience>("/students/me/experience", payload),
+  update: (id: number, payload: Partial<ExperienceInput>) => api.put<Experience>(`/students/me/experience/${id}`, payload),
+  remove: (id: number) => api.delete(`/students/me/experience/${id}`),
+};
+
+export interface Certification {
+  id: number; name: string; issuer: string; issue_date: string | null; expiry_date: string | null;
+  credential_id: string; credential_url: string; proof_url: string; created_at: string; updated_at: string;
+}
+export type CertificationInput = Omit<Certification, "id" | "created_at" | "updated_at">;
+export const certificationApi = {
+  list: () => api.get<Certification[]>("/students/me/certifications"),
+  create: (payload: CertificationInput) => api.post<Certification>("/students/me/certifications", payload),
+  update: (id: number, payload: Partial<CertificationInput>) => api.put<Certification>(`/students/me/certifications/${id}`, payload),
+  remove: (id: number) => api.delete(`/students/me/certifications/${id}`),
+};
+
+export interface Achievement {
+  id: number; title: string; organization: string; date: string | null; description: string;
+  proof_url: string; created_at: string; updated_at: string;
+}
+export type AchievementInput = Omit<Achievement, "id" | "created_at" | "updated_at">;
+export const achievementApi = {
+  list: () => api.get<Achievement[]>("/students/me/achievements"),
+  create: (payload: AchievementInput) => api.post<Achievement>("/students/me/achievements", payload),
+  update: (id: number, payload: Partial<AchievementInput>) => api.put<Achievement>(`/students/me/achievements/${id}`, payload),
+  remove: (id: number) => api.delete(`/students/me/achievements/${id}`),
 };
 export interface GapItem {
   skill_name: string;
@@ -211,8 +260,6 @@ export const studentApi = {
     description?: string;
     source_url?: string;
   }) => api.post("/students/me/evidence", payload),
-  verifyEvidence: (id: number) =>
-    api.post(`/students/me/evidence/${id}/verify`),
   skillGrowth: (skillName: string) =>
     api.get(`/students/me/skill-growth/${encodeURIComponent(skillName)}`),
   colleges: () => api.get("/students/colleges"),
@@ -320,8 +367,14 @@ export const aiApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
-  analyzeGithub: (repoUrl: string) =>
+   analyzeGithub: (repoUrl: string) =>
     api.post("/ai/github/analyze", { repo_url: repoUrl }),
+  resumeHistory: () =>
+    api.get<{ id: number; filename: string; created_at: string; used_ai: boolean; skills_detected: number; downloadable: boolean }[]>("/ai/resume/history"),
+  downloadResume: (analysisId: number) =>
+    api.get(`/ai/resume/${analysisId}/download`, { responseType: "blob" }),
+  deleteResume: (analysisId: number) =>
+    api.delete(`/ai/resume/${analysisId}`),
   acceptSkills: (payload: {
     source: "resume" | "github";
     source_title?: string;
@@ -338,6 +391,9 @@ export const aiApi = {
       target_career: targetCareer,
       weekly_hours: weeklyHours,
     }),
+    savedRoadmap: () => api.get("/ai/roadmap"),
+  completeRoadmapStep: (roadmapId: number, stepIndex: number) =>
+    api.patch(`/ai/roadmap/${roadmapId}/step/${stepIndex}/complete`),
   insights: () => api.get<ReadinessBreakdown>("/ai/insights"),
   copilotChat: (question: string) => api.post("/ai/copilot/chat", { question }),
   copilotHistory: () => api.get("/ai/copilot/history"),

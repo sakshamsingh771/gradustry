@@ -1,12 +1,13 @@
 from datetime import datetime
 from typing import Dict, Any, List
-
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import require_roles
+from app.core import file_storage
 from app.models.user import User, StudentProfile
 from app.models.skill import Skill, StudentSkill, Evidence, SkillScoreHistory
 from app.models.assessment import AssessmentAttempt, CareerRole
@@ -101,7 +102,50 @@ async def analyze_resume(file: UploadFile = File(...), db: Session = Depends(get
         "note": "AI detected — pending your review. Nothing is added to your Skill Passport until you accept it below.",
     }
 
+@router.get("/resume/history")
+def resume_history(db: Session = Depends(get_db), user: User = Depends(require_roles("student"))):
+    profile = _student_profile(db, user)
+    records = db.query(ResumeAnalysis).filter(
+        ResumeAnalysis.student_id == profile.id
+    ).order_by(ResumeAnalysis.created_at.desc()).all()
+    return [
+        {
+            "id": r.id, "filename": r.filename, "created_at": r.created_at,
+            "used_ai": r.used_ai, "skills_detected": len(r.result_json.get("skills", [])),
+            "downloadable": bool(r.file_path),
+        }
+        for r in records
+    ]
 
+
+@router.get("/resume/{analysis_id}/download")
+def download_resume(analysis_id: int, db: Session = Depends(get_db), user: User = Depends(require_roles("student"))):
+    profile = _student_profile(db, user)
+    record = db.query(ResumeAnalysis).filter(
+        ResumeAnalysis.id == analysis_id, ResumeAnalysis.student_id == profile.id
+    ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Resume analysis not found")
+    if not record.file_path:
+        raise HTTPException(status_code=404, detail="The original file for this analysis wasn't stored")
+    path = file_storage.resolve_resume_path(profile.id, record.file_path)
+    if path is None:
+        raise HTTPException(status_code=404, detail="The stored file is missing")
+    return FileResponse(path, filename=record.filename, media_type="application/octet-stream")
+
+
+@router.delete("/resume/{analysis_id}", status_code=204)
+def delete_resume(analysis_id: int, db: Session = Depends(get_db), user: User = Depends(require_roles("student"))):
+    profile = _student_profile(db, user)
+    record = db.query(ResumeAnalysis).filter(
+        ResumeAnalysis.id == analysis_id, ResumeAnalysis.student_id == profile.id
+    ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Resume analysis not found")
+    if record.file_path:
+        file_storage.delete_resume(profile.id, record.file_path)
+    db.delete(record)
+    db.commit()
 # ============================== GitHub Analyzer ==============================
 
 class GitHubAnalyzeRequest(BaseModel):

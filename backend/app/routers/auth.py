@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -37,7 +38,8 @@ def _issue_token(user: User) -> TokenResponse:
 
 
 @router.post("/register/student", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register_student(payload: StudentRegister, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def register_student(request: Request, payload: StudentRegister, db: Session = Depends(get_db)):
     email = _normalize_email(payload.email)
     _ensure_email_free(db, email)
     
@@ -72,7 +74,8 @@ def register_student(payload: StudentRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/register/college", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register_college(payload: CollegeRegister, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def register_college(request: Request, payload: CollegeRegister, db: Session = Depends(get_db)):
     email = _normalize_email(payload.email)
     _ensure_email_free(db, email)
 
@@ -107,7 +110,8 @@ def register_college(payload: CollegeRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/register/industry", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register_industry(payload: IndustryRegister, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def register_industry(request: Request, payload: IndustryRegister, db: Session = Depends(get_db)):
     email = _normalize_email(payload.email)
     _ensure_email_free(db, email)
 
@@ -142,7 +146,8 @@ def register_industry(payload: IndustryRegister, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     email = _normalize_email(payload.email)
     user = db.query(User).filter(User.email == email).first()
 
