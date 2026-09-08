@@ -4,10 +4,11 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/*.db
 backend/.env
-
+.env
 # frontend
 frontend/node_modules/
 frontend/dist/
 
 # misc
 .DS_Store
+".env" 
