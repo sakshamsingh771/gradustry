@@ -37,3 +37,16 @@ def require_roles(*roles: str):
         return user
 
     return checker
+
+def require_verified_college_member(college_id: int, db: Session, user: User) -> None:
+    from app.models.college_membership import CollegeMembership, MembershipStatus
+    membership = db.query(CollegeMembership).filter(
+        CollegeMembership.user_id == user.id,
+        CollegeMembership.college_id == college_id,
+        CollegeMembership.status == MembershipStatus.verified,
+    ).first()
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a verified member of this college to access this resource",
+        )

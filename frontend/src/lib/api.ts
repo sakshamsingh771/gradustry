@@ -398,3 +398,32 @@ export const aiApi = {
   copilotChat: (question: string) => api.post("/ai/copilot/chat", { question }),
   copilotHistory: () => api.get("/ai/copilot/history"),
 };
+
+export interface PulseArticle {
+  id: number; title: string; category: string; summary: string; source: string; source_url: string;
+  tags: string[]; relevant_skills: string[]; impact: string; published_at: string; saved: boolean;
+  why_it_matters?: { personalized: boolean; target_role?: string | null; matched_skills?: string[]; recommended_action: string };
+}
+export const pulseApi = {
+  list: (category?: string) => api.get<PulseArticle[]>("/pulse/articles", { params: category ? { category } : {} }),
+  forYou: () => api.get<PulseArticle[]>("/pulse/for-you"),
+  saved: () => api.get<PulseArticle[]>("/pulse/saved"),
+  save: (id: number) => api.post(`/pulse/articles/${id}/save`),
+  unsave: (id: number) => api.delete(`/pulse/articles/${id}/save`),
+};
+
+export interface CommunityListItem {
+  id: number; name: string; description: string; member_count: number; is_member: boolean;
+}
+export interface CommunityPost {
+  id: number; content: string; created_at: string; author_name: string; comment_count: number;
+}
+export const communityApi = {
+  listInterest: () => api.get<CommunityListItem[]>("/communities/interest"),
+  myCollegeCommunity: () => api.get("/communities/college/mine"),
+  join: (id: number) => api.post(`/communities/${id}/join`),
+  posts: (id: number) => api.get<CommunityPost[]>(`/communities/${id}/posts`),
+  createPost: (id: number, content: string) => api.post(`/communities/${id}/posts`, null, { params: { content } }),
+  comments: (postId: number) => api.get(`/communities/posts/${postId}/comments`),
+  createComment: (postId: number, content: string) => api.post(`/communities/posts/${postId}/comments`, null, { params: { content } }),
+};

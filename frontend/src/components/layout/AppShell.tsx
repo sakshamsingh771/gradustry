@@ -72,7 +72,7 @@ export function AppShell({ nav, children }: { nav: NavItem[]; children: ReactNod
             </div>
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-8">{children}</main>
+        <main className="flex-1 p-4 pb-24 md:p-8 md:pb-8">{children}</main>
         <nav className="fixed inset-x-0 bottom-0 z-10 flex justify-around border-t border-border bg-surface p-2 md:hidden">
           {nav.slice(0, 5).map((item) => {
             const Icon = item.icon

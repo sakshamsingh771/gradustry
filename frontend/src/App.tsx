@@ -20,6 +20,8 @@ import GithubAnalyzer from "@/pages/student/GithubAnalyzer"
 import AdaptiveAssessment from "@/pages/student/AdaptiveAssessment"
 import AIRoadmap from "@/pages/student/AIRoadmap"
 import CareerCopilot from "@/pages/student/CareerCopilot"
+import Pulse from "@/pages/student/Pulse"
+import Communities from "@/pages/student/communities"
 
 import CollegeLayout from "@/pages/college/CollegeLayout"
 import CollegeDashboard from "@/pages/college/Dashboard"
@@ -57,6 +59,8 @@ export default function App() {
         <Route path="github-analyzer" element={<GithubAnalyzer />} />
         <Route path="adaptive-assessment" element={<AdaptiveAssessment />} />
         <Route path="ai-roadmap" element={<AIRoadmap />} />
+        <Route path="pulse" element={<Pulse />} />
+        <Route path="communities" element={<Communities />} />
         <Route path="copilot" element={<CareerCopilot />} />
       </Route>
 

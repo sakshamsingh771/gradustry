@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RequiredSkillIn(BaseModel):
@@ -90,9 +90,9 @@ class ApplicationStatusUpdate(BaseModel):
 
 class IndustryFeedbackCreate(BaseModel):
     application_id: int
-    technical_skill: float
-    problem_solving: float
-    communication: float
-    teamwork: float
-    professionalism: float
+    technical_skill: float = Field(ge=0, le=10)
+    problem_solving: float = Field(ge=0, le=10)
+    communication: float = Field(ge=0, le=10)
+    teamwork: float = Field(ge=0, le=10)
+    professionalism: float = Field(ge=0, le=10)
     comments: str = ""

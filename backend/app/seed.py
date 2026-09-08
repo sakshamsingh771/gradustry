@@ -100,6 +100,12 @@ def run():
         db.add(student)
         db.flush()
 
+        from app.models.college_membership import CollegeMembership, MembershipStatus, VerificationMethod
+        db.add(CollegeMembership(
+            user_id=student_user.id, college_id=college.id,
+            status=MembershipStatus.verified, verification_method=VerificationMethod.platform_admin,
+        ))
+
         demo_evidence = {
             "Python": [("certificate", "verified", "NPTEL Python Programming"), ("github", "verified", "5 Python repos analyzed"), ("assessment", "verified", "Assessment score 86%")],
             "FastAPI": [("project", "verified", "Gradustry backend project"), ("assessment", "pending_review", "Assessment score 65%")],
@@ -151,6 +157,33 @@ def run():
         db.flush()
         for skill_name, min_p, weight in [("Python", 75, 1.5), ("FastAPI", 65, 1.5), ("SQL", 55, 1.0), ("Docker", 40, 0.8)]:
             db.add(OpportunitySkill(opportunity_id=opp.id, skill_id=skill_objs[skill_name].id, min_proficiency=min_p, weight=weight))
+
+        from app.models.community import Community, CommunityType
+        for name, description in [
+            ("AI & Machine Learning", "Discuss ML models, papers, and projects."),
+            ("Web Development", "Frontend, backend, and full-stack discussions."),
+            ("DSA", "Data structures, algorithms, and interview prep."),
+            ("Cybersecurity", "Security research, CTFs, and best practices."),
+            ("Open Source", "Find projects to contribute to and share your own."),
+        ]:
+            if not db.query(Community).filter(Community.type == CommunityType.interest, Community.name == name).first():
+                db.add(Community(name=name, type=CommunityType.interest, description=description))
+
+        from app.models.pulse import PulseArticle
+        for title, category, summary, skills, impact in [
+            ("FastAPI releases a major version with native background workers", "Web Development",
+             "The update simplifies async task handling without a separate queue for many use cases.", "Python,FastAPI,Backend Development", "high"),
+            ("React introduces a new compiler-driven optimization mode", "Web Development",
+             "Reduces the need for manual memoization in most component trees.", "React,JavaScript,TypeScript", "medium"),
+            ("A widely-used open-source Docker base image patches a critical CVE", "Cybersecurity",
+             "Teams should rebuild and redeploy images built on the affected base.", "Docker,DevOps,Cloud & DevOps", "high"),
+            ("PostgreSQL 17 improves query planning for large joins", "Data Science",
+             "Notably faster on analytical workloads with multiple joined tables.", "SQL,PostgreSQL,Data Science", "medium"),
+            ("A major cloud provider cuts GPU inference pricing", "AI & Machine Learning",
+             "Makes running small-to-mid sized open models in production notably cheaper.", "Machine Learning,Python,Cloud & DevOps", "medium"),
+        ]:
+            if not db.query(PulseArticle).filter(PulseArticle.title == title).first():
+                db.add(PulseArticle(title=title, category=category, summary=summary, source="Gradustry Pulse Desk", tags=category, relevant_skills=skills, impact=impact))
 
         db.commit()
         print("Seed complete.")

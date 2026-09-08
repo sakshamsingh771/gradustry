@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { studentApi, opportunityApi, aiApi } from "@/lib/api"
+import { studentApi, opportunityApi, aiApi, pulseApi, communityApi } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/context/AuthContext"
-import { Sparkles, FileUp, GitFork, Bot, Target, User, Briefcase, ClipboardList, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Sparkles, FileUp, GitFork, Bot, Target, User, Briefcase, ClipboardList, CheckCircle2, AlertTriangle, Newspaper, Users } from "lucide-react"
 
 const COMPONENT_LABELS: Record<string, string> = {
   skills: "Skills", assessments: "Assessments", evidence: "Evidence",
@@ -20,6 +20,8 @@ export default function StudentDashboard() {
   const insightsQ = useQuery({ queryKey: ["ai-insights"], queryFn: () => aiApi.insights().then((r) => r.data) })
   const profileQ = useQuery({ queryKey: ["my-profile"], queryFn: () => studentApi.myProfile().then((r) => r.data) })
   const activityQ = useQuery({ queryKey: ["activity-status"], queryFn: () => studentApi.activityStatus().then((r) => r.data) })
+  const pulseQ = useQuery({ queryKey: ["pulse", "for-you"], queryFn: () => pulseApi.forYou().then((r) => r.data) })
+  const communitiesQ = useQuery({ queryKey: ["interest-communities"], queryFn: () => communityApi.listInterest().then((r) => r.data) })
 
   const passport = passportQ.data
   const strength = profileQ.data?.strength
@@ -173,6 +175,43 @@ export default function StudentDashboard() {
             </div>
           ))}
           {!matchesQ.data?.length && <p className="text-sm text-muted">No matches yet — add skills and evidence to unlock recommendations.</p>}
+        </CardContent>
+      </Card>
+
+      {/* PULSE HIGHLIGHTS */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <div className="flex items-center gap-2"><Newspaper className="h-4 w-4 text-accent" /><CardTitle>Gradustry Pulse</CardTitle></div>
+          <Link to="/student/pulse" className="text-xs text-accent">View all →</Link>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {pulseQ.data?.slice(0, 3).map((a) => (
+            <div key={a.id} className="rounded-lg border border-border p-3">
+              <Badge variant="outline">{a.category}</Badge>
+              <p className="mt-1 text-sm font-medium">{a.title}</p>
+              {a.why_it_matters?.personalized && (
+                <p className="mt-1 text-xs text-accent">Relevant: {a.why_it_matters.matched_skills?.join(", ")}</p>
+              )}
+            </div>
+          ))}
+          {!pulseQ.data?.length && <p className="text-sm text-muted">No updates yet.</p>}
+        </CardContent>
+      </Card>
+
+      {/* COMMUNITY ACTIVITY */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <div className="flex items-center gap-2"><Users className="h-4 w-4 text-accent" /><CardTitle>Community activity</CardTitle></div>
+          <Link to="/student/communities" className="text-xs text-accent">View all →</Link>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {communitiesQ.data?.slice(0, 3).map((c) => (
+            <Link key={c.id} to="/student/communities" className="rounded-lg border border-border p-3 hover:border-accent">
+              <p className="text-sm font-medium">{c.name}</p>
+              <p className="text-xs text-muted">{c.member_count} members{c.is_member ? " · You're in" : ""}</p>
+            </Link>
+          ))}
+          {!communitiesQ.data?.length && <p className="text-sm text-muted">No communities yet.</p>}
         </CardContent>
       </Card>
 

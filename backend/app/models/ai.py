@@ -18,6 +18,17 @@ class ResumeAnalysis(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class PersonalizedRoadmap(Base):
+    __tablename__ = "personalized_roadmaps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("student_profiles.id"), index=True)
+    target_career: Mapped[str] = mapped_column(String(255))
+    weekly_hours: Mapped[int] = mapped_column(Integer, default=6)
+    roadmap_json: Mapped[dict] = mapped_column(JSON)
+    used_ai: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 class GitHubAnalysis(Base):
     __tablename__ = "github_analyses"
 

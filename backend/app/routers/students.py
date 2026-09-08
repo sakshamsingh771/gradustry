@@ -69,13 +69,42 @@ def join_college(
     user: User = Depends(require_roles("student")),
 ):
     from app.models.user import CollegeProfile
+    from app.models.college_membership import CollegeMembership, MembershipStatus
+
     profile = _get_student_profile(db, user)
     college = db.query(CollegeProfile).filter(CollegeProfile.id == college_id).first()
     if not college:
         raise HTTPException(status_code=404, detail="College not found")
+
+    existing = db.query(CollegeMembership).filter(
+        CollegeMembership.user_id == user.id, CollegeMembership.college_id == college_id
+    ).first()
+    if existing and existing.status == MembershipStatus.verified:
+        return {"detail": f"Already a verified member of {college.college_name}", "status": "verified"}
+    if existing:
+        existing.status = MembershipStatus.pending
+    else:
+        db.add(CollegeMembership(user_id=user.id, college_id=college_id, status=MembershipStatus.pending))
+
     profile.college_id = college.id
     db.commit()
-    return {"detail": f"Joined {college.college_name}"}
+    return {"detail": f"Membership request sent to {college.college_name} — pending verification", "status": "pending"}
+
+
+@router.get("/me/college-membership")
+def my_college_membership(db: Session = Depends(get_db), user: User = Depends(require_roles("student"))):
+    from app.models.college_membership import CollegeMembership
+    membership = db.query(CollegeMembership).filter(CollegeMembership.user_id == user.id).order_by(
+        CollegeMembership.created_at.desc()
+    ).first()
+    if not membership:
+        return None
+    return {
+        "college_id": membership.college_id,
+        "college_name": membership.college.college_name if membership.college else None,
+        "status": membership.status,
+        "verification_method": membership.verification_method,
+    }
 
 
 @router.get("/me/skill-passport", response_model=SkillPassportOut)

@@ -13,7 +13,7 @@ from app.schemas.opportunity import (
     OpportunityCreate, OpportunityOut, OpportunityMatchOut, ApplyRequest,
     ApplicationOut, ApplicationStatusUpdate, IndustryFeedbackCreate,
 )
-from app.ai import matcher, evidence_engine
+from app.ai import matcher, evidence_engine, career_readiness
 
 router = APIRouter(prefix="/api/opportunities", tags=["opportunities"])
 
@@ -69,6 +69,71 @@ def _student_skill_map(db: Session, student_id: int) -> Dict[str, Dict[str, Any]
                 "evidence_count": len(r.evidences),
             }
     return skills_map
+
+
+@router.get("/{opportunity_id}/candidates")
+async def discover_candidates(
+    opportunity_id: int, min_match_score: float = 50.0,
+    db: Session = Depends(get_db), user: User = Depends(require_roles("industry")),
+):
+    profile = _industry_profile(db, user)
+    opp = db.query(Opportunity).filter(Opportunity.id == opportunity_id, Opportunity.industry_id == profile.id).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+
+    required = [{"skill_name": rs.skill.name, "min_proficiency": rs.min_proficiency, "weight": rs.weight} for rs in opp.required_skills if rs.skill]
+    opp_dict = {"final_year_only": bool(opp.final_year_only), "min_year_of_study": opp.min_year_of_study}
+
+    candidates = []
+    visible_students = db.query(StudentProfile).filter(StudentProfile.profile_visible == True).all()  # noqa: E712
+    for sp in visible_students:
+        student_skills = _student_skill_map(db, sp.id)
+        student_dict = {"year_of_study": sp.year_of_study}
+        match = await matcher.build_match_hybrid(student_dict, opp_dict, student_skills, required)
+        if not match["explanation"]["is_eligible"] or match["match_score"] < min_match_score:
+            continue
+        readiness = career_readiness.compute_for_student(db, sp)["overall_readiness"]
+        already_applied = db.query(Application).filter(
+            Application.opportunity_id == opportunity_id, Application.student_id == sp.id
+        ).first()
+        candidates.append({
+            "student_id": sp.id, "career_readiness": readiness, "match_score": match["match_score"],
+            "matched_skills": match["explanation"]["matched_skills"],
+            "evidence_backed_skill_count": match["explanation"]["relevant_evidence_count"],
+            "already_applied": already_applied is not None,
+            "application_status": already_applied.status if already_applied else None,
+        })
+    candidates.sort(key=lambda c: c["match_score"], reverse=True)
+    return candidates
+
+
+@router.post("/{opportunity_id}/candidates/{student_id}/invite", response_model=ApplicationOut)
+def invite_candidate(
+    opportunity_id: int, student_id: int,
+    db: Session = Depends(get_db), user: User = Depends(require_roles("industry")),
+):
+    profile = _industry_profile(db, user)
+    opp = db.query(Opportunity).filter(Opportunity.id == opportunity_id, Opportunity.industry_id == profile.id).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    student = db.query(StudentProfile).filter(StudentProfile.id == student_id, StudentProfile.profile_visible == True).first()  # noqa: E712
+    if not student:
+        raise HTTPException(status_code=404, detail="Candidate not found or not visible")
+
+    existing = db.query(Application).filter(
+        Application.opportunity_id == opportunity_id, Application.student_id == student_id
+    ).first()
+    if not existing:
+        existing = Application(opportunity_id=opportunity_id, student_id=student_id, status="invited")
+        db.add(existing)
+        db.commit()
+        db.refresh(existing)
+
+    return ApplicationOut(
+        id=existing.id, opportunity_id=opp.id, opportunity_title=opp.title,
+        company_name=profile.company_name, student_id=student_id, student_name=None,
+        status=existing.status, match_score=existing.match_score, applied_at=existing.applied_at,
+    )
 
 
 @router.post("", response_model=OpportunityOut)
@@ -305,6 +370,11 @@ def submit_feedback(
     
     if not app_ or not app_.opportunity or app_.opportunity.industry_id != profile.id:
         raise HTTPException(status_code=404, detail="Application not found")
+
+    if app_.feedback is not None:
+        raise HTTPException(status_code=400, detail="Feedback has already been submitted for this application")
+
+
 
     feedback = IndustryFeedback(
         application_id=app_.id,

@@ -97,6 +97,14 @@ def register_college(request: Request, payload: CollegeRegister, db: Session = D
             affiliation=payload.affiliation,
         )
         db.add(profile)
+        db.flush()
+
+        from app.models.community import Community, CommunityType
+        db.add(Community(
+            name=f"{profile.college_name} Community", type=CommunityType.college,
+            college_id=profile.id, description=f"Private community for verified {profile.college_name} students.",
+        ))
+
         db.commit()
         db.refresh(user)
         return _issue_token(user)
