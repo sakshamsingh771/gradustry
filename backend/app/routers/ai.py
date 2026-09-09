@@ -431,6 +431,16 @@ def _build_copilot_context(db: Session, profile: StudentProfile) -> dict:
         if best is None or m["match_score"] > best["match_score"]:
             best = {"title": opp.title, "match_score": m["match_score"], "below_target_skills": m["below_target_skills"]}
     context["best_opportunity"] = best
+    
+    from app.models.assessment import RoadmapStep
+    active_steps = db.query(RoadmapStep).filter(
+        RoadmapStep.student_id == profile.id, RoadmapStep.status != "completed"
+    ).order_by(RoadmapStep.order_index).limit(5).all()
+    if active_steps:
+        context["active_roadmap"] = [
+            {"skill": s.skill.name, "step": s.title, "status": s.status} for s in active_steps
+        ]
+        
     return context
 
 

@@ -6,58 +6,59 @@
 }
 
 /* ---------------------------------------------------------------------- */
-/* Gradustry "Navy / Blue-Grey / Electric Blue" theme                     */
-/* Professional career-tech SaaS palette: deep navy + slate surfaces,     */
-/* electric-blue actions, calm status colors. Solid surfaces (no glass).  */
+/* Balanced Unstop Theme: Rich Light Surface + Soft Midnight Dark         */
 /* ---------------------------------------------------------------------- */
 
 :root {
-  /* Light mode */
-  --background: 210 40% 98%;      /* #F8FAFC */
-  --foreground: 222 47% 11%;      /* #0F172A primary text */
-  --surface: 0 0% 100%;           /* #FFFFFF cards/navbar */
-  --surface-alt: 210 40% 96%;     /* #F1F5F9 hover bg */
-  --border: 214 32% 91%;          /* #E2E8F0 */
-  --border-hover: 213 97% 87%;    /* #BFDBFE card hover border */
-  --muted: 215 19% 35%;           /* #475569 secondary text */
-  --muted-foreground: 215 16% 47%; /* #64748B muted text */
-  --accent: 221 83% 53%;          /* #2563EB electric blue - primary */
-  --accent-2: 217 91% 60%;        /* #3B82F6 bright blue - secondary/hover */
-  --accent-hover: 224 76% 48%;    /* #1D4ED8 primary button hover */
+  --background: 215 28% 95%;        /* #EEF2F6 Slightly richer, non-glare background */
+  --foreground: 222 47% 11%;        /* #0F172A Deep navy text */
+  --surface: 0 0% 100%;             /* #FFFFFF Pure white cards for strong contrast */
+  --surface-alt: 214 32% 91%;       /* #E2E8F0 Hover elements */
+  --border: 214 20% 85%;            /* #CBD5E1 Defined borders */
+  --muted: 215 25% 38%;             /* #475569 Secondary text */
+
+  --accent: 221 83% 53%;            /* #2563EB Unstop Electric Blue */
+  --accent-hover: 224 76% 48%;      /* #1D4ED8 Deep Blue */
+  --accent-2: 262 83% 58%;          /* #8B5CF6 Electric Violet */
   --accent-foreground: 0 0% 100%;
-  --success: 160 84% 39%;         /* #10B981 */
-  --warning: 38 92% 50%;          /* #F59E0B */
-  --danger: 0 84% 60%;            /* #EF4444 */
-  --ring: 221 83% 53%;            /* #2563EB */
-  --ai-accent: 239 84% 67%;       /* #6366F1 */
-  --ai-bg: 226 100% 97%;          /* #EEF2FF */
-  --glass-bg: 0 0% 100%;
-  --glass-alpha: 1;
-  --glass-border-alpha: 1;
+
+  --success: 158 64% 42%;           /* #10B981 */
+  --warning: 38 92% 50%;            /* #F59E0B */
+  --danger: 347 87% 53%;            /* #F43F5E */
+  --info: 199 89% 48%;              /* #0EA5E9 */
+  --ring: 221 83% 53%;
+
+  --ai-accent: 262 83% 58%;
+  --ai-bg: 250 100% 96%;
+
+  --card-hover-border: 221 83% 70%;
+  --focus-ring-alpha: 0.2;
 }
 
 .dark {
-  --background: 223 49% 8%;       /* #0B1120 */
-  --foreground: 210 40% 98%;      /* #F8FAFC primary text */
-  --surface: 221 38% 15%;         /* #172033 cards */
-  --surface-alt: 217 33% 17%;     /* #1E293B elevated cards / hover bg */
-  --border: 215 25% 27%;          /* #334155 */
-  --border-hover: 221 83% 53%;    /* #3B82F6-ish hover border, uses accent-2 below */
-  --muted: 213 27% 84%;           /* #CBD5E1 secondary text */
-  --muted-foreground: 215 20% 65%; /* #94A3B8 muted text */
-  --accent: 217 91% 60%;          /* #3B82F6 electric blue - primary */
-  --accent-2: 213 94% 68%;        /* #60A5FA bright blue - secondary/hover */
-  --accent-hover: 213 94% 68%;    /* #60A5FA primary button hover */
+  --background: 222 47% 11%;        /* #0F172A Balanced dark blue-grey (not pure black) */
+  --foreground: 210 40% 98%;        /* #F8FAFC Clear text */
+  --surface: 217 33% 17%;           /* #1E293B Lighter card background for depth */
+  --surface-alt: 215 25% 23%;       /* #273549 Card hover state */
+  --border: 215 20% 28%;            /* #334155 Visible outline */
+  --muted: 215 20% 65%;             /* #94A3B8 Secondary text */
+
+  --accent: 217 91% 60%;            /* #3B82F6 Vibrant Accent */
+  --accent-hover: 213 94% 68%;      /* #60A5FA */
+  --accent-2: 262 83% 68%;          /* #A78BFA */
   --accent-foreground: 0 0% 100%;
-  --success: 158 64% 52%;         /* #34D399 */
-  --warning: 43 96% 56%;          /* #FBBF24 */
-  --danger: 0 91% 71%;            /* #F87171 */
-  --ring: 213 94% 68%;            /* #60A5FA */
-  --ai-accent: 239 84% 67%;       /* #6366F1 */
-  --ai-bg: 244 47% 20%;           /* #1E1B4B */
-  --glass-bg: 221 38% 15%;
-  --glass-alpha: 1;
-  --glass-border-alpha: 1;
+
+  --success: 156 64% 52%;
+  --warning: 43 96% 58%;
+  --danger: 347 89% 61%;
+  --info: 199 89% 60%;
+  --ring: 217 91% 60%;
+
+  --ai-accent: 262 83% 68%;
+  --ai-bg: 255 45% 20%;
+
+  --card-hover-border: 217 91% 60%;
+  --focus-ring-alpha: 0.25;
 }
 
 @theme inline {
@@ -66,31 +67,22 @@
   --color-surface: hsl(var(--surface));
   --color-surface-alt: hsl(var(--surface-alt));
   --color-border: hsl(var(--border));
-  --color-border-hover: hsl(var(--border-hover));
   --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
   --color-accent: hsl(var(--accent));
   --color-accent-2: hsl(var(--accent-2));
-  --color-accent-hover: hsl(var(--accent-hover));
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-success: hsl(var(--success));
   --color-warning: hsl(var(--warning));
   --color-danger: hsl(var(--danger));
   --color-ring: hsl(var(--ring));
-  --color-ai-accent: hsl(var(--ai-accent));
-  --color-ai-bg: hsl(var(--ai-bg));
 }
 
 * {
   border-color: hsl(var(--border));
 }
 
-html {
-  color-scheme: light;
-}
-html.dark {
-  color-scheme: dark;
-}
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
 
 body {
   background-color: hsl(var(--background));
@@ -101,45 +93,62 @@ body {
 
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
+  color: hsl(var(--foreground));
 }
 
-/* Vibrant gradient accent text, e.g. for hero headings/logo wordmarks */
 .text-gradient-accent {
-  background-image: linear-gradient(90deg, hsl(var(--accent)), hsl(var(--accent-2)));
+  background-image: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-2)));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-::selection {
-  background-color: hsl(var(--accent) / 0.25);
-}
+::selection { background-color: hsl(var(--accent) / 0.25); }
 
-/* subtle custom scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* ---------------------------------------------------------------------- */
-/* Surfaces                                                                */
-/* Cards, sidebars and headers use solid navy/slate/white surfaces with   */
-/* subtle borders and shadows -- no glassmorphism/blur, per brand spec.   */
-/* ---------------------------------------------------------------------- */
-
-.glass,
+/* Subtle Shadows for Cards */
 [class~="bg-surface"] {
   background-color: hsl(var(--surface));
-  border-color: hsl(var(--border));
-  box-shadow: 0 1px 2px 0 hsl(222 47% 11% / 0.04);
+  box-shadow: 0 2px 4px -1px hsl(220 20% 10% / 0.06), 0 4px 6px -1px hsl(220 20% 10% / 0.08);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.glass-solid {
-  background-color: hsl(var(--surface));
+[class~="bg-surface"]:hover {
+  border-color: hsl(var(--card-hover-border));
 }
 
-/* Subtle focus/hover ring used behind primary actions / accent icons */
-.accent-glow {
-  box-shadow: 0 0 0 1px hsl(var(--accent) / 0.35), 0 4px 14px -4px hsl(var(--accent) / 0.35);
+.dark [class~="bg-surface"] {
+  box-shadow: 0 4px 6px -1px hsl(0 0% 0% / 0.25);
+}
+
+button, [role="button"] {
+  transition: all 150ms ease;
+}
+
+[class~="bg-accent"] {
+  background-color: hsl(var(--accent));
+}
+[class~="bg-accent"]:hover {
+  background-color: hsl(var(--accent-hover));
+}
+
+input, textarea, select {
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible,
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible {
+  outline: none;
+  border-color: hsl(var(--accent));
+  box-shadow: 0 0 0 3px hsl(var(--accent) / var(--focus-ring-alpha));
+}
+
+.ai-badge, .ai-surface {
+  background-color: hsl(var(--ai-bg));
+  color: hsl(var(--ai-accent));
+  border-color: hsl(var(--ai-accent) / 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {

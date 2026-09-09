@@ -61,3 +61,23 @@ class Evidence(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     student_skill = relationship("StudentSkill", back_populates="evidences")
+
+
+
+class LearningResource(Base):
+    """Verified, non-AI-invented learning material for a skill/topic. Phase 13."""
+
+    __tablename__ = "learning_resources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id"), index=True)
+    topic: Mapped[str] = mapped_column(String(120), default="General")  # e.g. "CNN"
+    title: Mapped[str] = mapped_column(String(255))
+    provider: Mapped[str] = mapped_column(String(120), default="")  # e.g. "freeCodeCamp"
+    url: Mapped[str] = mapped_column(String(500))
+    difficulty: Mapped[str] = mapped_column(String(20), default="beginner")  # beginner|intermediate|advanced
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=30)
+    verified: Mapped[bool] = mapped_column(String(10), default="true")  # "true"|"false" (admin-curated only)
+
+    skill = relationship("Skill")
+

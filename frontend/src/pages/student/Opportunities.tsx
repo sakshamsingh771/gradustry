@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { opportunityApi } from "@/lib/api"
 import { MatchCard } from "@/components/domain/MatchCard"
@@ -5,6 +6,7 @@ import { toast } from "sonner"
 
 export default function StudentOpportunities() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const matchesQ = useQuery({ queryKey: ["matches"], queryFn: () => opportunityApi.matches().then((r) => r.data) })
   const appsQ = useQuery({ queryKey: ["my-applications"], queryFn: () => opportunityApi.myApplications().then((r) => r.data) })
 
@@ -27,11 +29,12 @@ export default function StudentOpportunities() {
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {matchesQ.data?.map((m) => (
-          <MatchCard
+         <MatchCard
             key={m.opportunity.id}
             match={m}
             applied={appliedIds.has(m.opportunity.id)}
             onApply={() => applyMutation.mutate(m.opportunity.id)}
+            onCloseGap={(skill) => navigate(`/student/roadmap/${encodeURIComponent(skill)}`)}
           />
         ))}
         {matchesQ.data?.length === 0 && <p className="text-sm text-muted">No opportunities posted yet — check back soon.</p>}

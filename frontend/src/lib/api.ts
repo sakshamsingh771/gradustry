@@ -159,13 +159,18 @@ export const achievementApi = {
   update: (id: number, payload: Partial<AchievementInput>) => api.put<Achievement>(`/students/me/achievements/${id}`, payload),
   remove: (id: number) => api.delete(`/students/me/achievements/${id}`),
 };
+
 export interface GapItem {
-  skill_name: string;
-  current_score: number;
-  target_score: number;
-  gap: number;
-  severity: "matched" | "low" | "medium" | "high";
-  reason: string;
+  skill_name: string
+  current_score: number
+  target_score: number
+  gap: number
+  severity: "matched" | "low" | "medium" | "high"
+  priority: "High" | "Medium" | "Low" | "None"
+  reason: string
+  reasons: string[]
+  missing_subskills: string[]
+  blocked_by_prerequisites: string[]
 }
 
 export interface GapReport {
@@ -187,11 +192,22 @@ export interface RoadmapStepT {
 }
 
 export interface SkillRoadmap {
-  skill_name: string;
-  baseline_score: number;
-  target_score: number;
-  current_score: number;
-  steps: RoadmapStepT[];
+  skill_name: string
+  baseline_score: number
+  target_score: number
+  current_score: number
+  steps: RoadmapStepT[]
+  resources: LearningResource[]
+}
+
+export interface LearningResource {
+  id: number
+  topic: string
+  title: string
+  provider: string
+  url: string
+  difficulty: string
+  duration_minutes: number
 }
 
 export interface OpportunityOut {
@@ -294,6 +310,7 @@ export const gapApi = {
     api.get<SkillRoadmap>(`/gap/roadmap/${encodeURIComponent(skillName)}`),
   completeStep: (stepId: number) =>
     api.patch(`/gap/roadmap/step/${stepId}/complete`),
+    resources: (skillName: string) => api.get<LearningResource[]>(`/gap/resources/${encodeURIComponent(skillName)}`),
 };
 
 // ---------- Assessments ----------

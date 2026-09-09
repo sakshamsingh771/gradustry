@@ -6,7 +6,7 @@ from app.core.deps import require_roles
 from app.models.user import User, StudentProfile
 from app.models.assessment import CareerRole, RoadmapStep
 from app.models.skill import StudentSkill
-from app.schemas.gap import SkillGapReport, CareerRoleOut, SkillRoadmapOut, RoadmapStepOut
+from app.schemas.gap import SkillGapReport, CareerRoleOut, SkillRoadmapOut, RoadmapStepOut,LearningResourceOut
 from app.ai import skill_gap_engine, roadmap_generator
 
 router = APIRouter(prefix="/api/gap", tags=["skill-gap"])
@@ -18,17 +18,34 @@ def _student_profile(db: Session, user: User) -> StudentProfile:
         raise HTTPException(status_code=404, detail="Student profile not found")
     return profile
 
+def _resources_for(db: Session, skill_name: str) -> list:
+    from app.models.skill import Skill, LearningResource
+    skill = db.query(Skill).filter(Skill.name == skill_name).first()
+    if not skill:
+        return []
+    return db.query(LearningResource).filter(LearningResource.skill_id == skill.id).all()
 
 def _student_skill_map(db: Session, student_id: int) -> dict:
+    from app.models.assessment import AssessmentAttempt
+
     rows = db.query(StudentSkill).filter(StudentSkill.student_id == student_id).all()
-    return {
-        r.skill.name: {
+    result = {}
+    for r in rows:
+        evidences = r.evidences
+        assessment_taken = db.query(AssessmentAttempt).filter(
+            AssessmentAttempt.student_id == student_id, AssessmentAttempt.skill_id == r.skill_id
+        ).first() is not None
+        github_signal = any(e.type == "github" for e in evidences)
+        project_count = sum(1 for e in evidences if e.type == "project")
+        result[r.skill.name] = {
             "proficiency_score": r.proficiency_score,
             "confidence_level": r.confidence_level,
-            "evidence_count": len(r.evidences),
+            "evidence_count": len(evidences),
+            "assessment_taken": assessment_taken,
+            "github_signal": github_signal,
+            "project_count": project_count,
         }
-        for r in rows
-    }
+    return result
 
 
 @router.get("/roles", response_model=list[CareerRoleOut])
@@ -89,6 +106,7 @@ def generate_roadmap(
     return SkillRoadmapOut(
         skill_name=skill_name, baseline_score=current, target_score=target_score,
         current_score=current, steps=[RoadmapStepOut.model_validate(s) for s in steps],
+        resources=_resources_for(db, skill_name),
     )
 
 
@@ -114,6 +132,7 @@ def get_roadmap(
     return SkillRoadmapOut(
         skill_name=skill_name, baseline_score=steps[0].baseline_score, target_score=steps[0].target_score,
         current_score=current, steps=[RoadmapStepOut.model_validate(s) for s in steps],
+        resources=_resources_for(db, skill_name),
     )
 
 
@@ -131,3 +150,17 @@ def complete_step(
     db.commit()
     db.refresh(step)
     return step
+
+
+
+@router.get("/resources/{skill_name}", response_model=list[LearningResourceOut])
+def list_resources(
+    skill_name: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles("student")),
+):
+    from app.models.skill import Skill, LearningResource
+    skill = db.query(Skill).filter(Skill.name == skill_name).first()
+    if not skill:
+        return []
+    return db.query(LearningResource).filter(LearningResource.skill_id == skill.id).all()

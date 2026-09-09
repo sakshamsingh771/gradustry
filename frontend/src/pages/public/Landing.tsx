@@ -71,7 +71,7 @@ export default function Landing() {
     { icon: GitFork, title: "Analyze GitHub", to: isStudent ? "/student/github-analyzer" : "/register" },
     { icon: ClipboardList, title: "Assess Your Skills", to: isStudent ? "/student/assessments" : "/register" },
     { icon: Target, title: "Find Skill Gaps", to: isStudent ? "/student/gap" : "/register" },
-    { icon: Search, title: "Explore Opportunities", to: "/opportunities" },
+    { icon: Search, title: "Explore Opportunities", to: isStudent ? "/student/opportunities" : "/opportunities" },
   ]
 
   return (
@@ -330,7 +330,7 @@ export default function Landing() {
           <h2 className="mt-4 font-display text-2xl md:text-3xl">Don't just apply for opportunities. Become ready for them.</h2>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Button size="lg" onClick={() => navigate(primaryCta.to)}>{primaryCta.label}</Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/opportunities")}>Explore Opportunities</Button>
+            <Button size="lg" variant="outline" onClick={() => navigate(isStudent ? "/student/opportunities" : "/opportunities")}>Explore Opportunities</Button>
           </div>
         </div>
       </section>

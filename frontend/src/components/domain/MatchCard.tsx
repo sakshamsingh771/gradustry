@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import type { OpportunityMatch } from "@/lib/api"
 import { CheckCircle2, AlertTriangle, XCircle } from "lucide-react"
 
-export function MatchCard({ match, onApply, applied }: { match: OpportunityMatch; onApply: () => void; applied: boolean }) {
+export function MatchCard({ match, onApply, applied, onCloseGap }: { match: OpportunityMatch; onApply: () => void; applied: boolean; onCloseGap: (skill: string) => void }) {
   const { opportunity: o, match_score, explanation: ex } = match
   return (
     <Card>
@@ -31,8 +31,9 @@ export function MatchCard({ match, onApply, applied }: { match: OpportunityMatch
             </div>
           ))}
           {ex.below_target_skills.map((s) => (
-            <div key={s} className="flex items-center gap-2 text-warning">
-              <AlertTriangle className="h-4 w-4 shrink-0" /> {s} below target
+            <div key={s} className="flex items-center justify-between gap-2 text-warning">
+              <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {s} below target</span>
+              <Button size="sm" variant="ghost" className="h-auto py-0.5 text-xs" onClick={() => onCloseGap(s)}>Close gap</Button>
             </div>
           ))}
           {ex.missing_eligibility.map((s) => (

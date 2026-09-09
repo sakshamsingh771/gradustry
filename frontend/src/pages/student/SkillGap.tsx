@@ -25,7 +25,7 @@ export default function SkillGap() {
     mutationFn: (skillName: string) => gapApi.generateRoadmap(skillName, 70),
     onSuccess: (_res, skillName) => {
       toast.success(`Roadmap generated for ${skillName}`)
-      navigate(`/student/assessments?skill=${encodeURIComponent(skillName)}`)
+      navigate(`/student/roadmap/${encodeURIComponent(skillName)}`)
     },
   })
 

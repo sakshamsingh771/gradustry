@@ -22,6 +22,7 @@ SKILLS = {
     "Python": "Programming", "FastAPI": "Backend", "React": "Frontend", "SQL": "Database",
     "Docker": "DevOps", "AWS": "Cloud", "Git": "Tools", "JavaScript": "Programming",
     "System Design": "Engineering", "Communication": "Soft Skill",
+        "Machine Learning": "AI/ML", "Deep Learning": "AI/ML",
 }
 
 ROLES = {
@@ -32,6 +33,10 @@ ROLES = {
     "Full Stack Developer": [
         ("Python", 70, "core"), ("React", 75, "core"), ("JavaScript", 70, "core"),
         ("SQL", 60, "preferred"), ("Docker", 55, "preferred"),
+    ],
+        "AI Engineer": [
+        ("Python", 80, "core"), ("Machine Learning", 75, "core"),
+        ("Deep Learning", 75, "core"), ("SQL", 55, "preferred"),
     ],
 }
 
@@ -61,6 +66,19 @@ def run():
                 db.add(RoleSkillRequirement(
                     role_id=role.id, skill_id=skill_objs[skill_name].id,
                     target_proficiency=target, importance=importance,
+                ))
+                # --- Learning resources (Phase 13 — verified, never AI-invented) ---
+        from app.models.skill import LearningResource
+        resource_seed = [
+            ("Deep Learning", "CNN", "Convolutional Neural Networks", "deeplearning.ai", "https://www.coursera.org/learn/convolutional-neural-networks", "intermediate", 600),
+            ("Deep Learning", "PyTorch", "PyTorch fundamentals", "PyTorch.org", "https://pytorch.org/tutorials/beginner/basics/intro.html", "beginner", 180),
+            ("Docker", "Dockerfile", "Docker for Beginners", "Docker Docs", "https://docs.docker.com/get-started/", "beginner", 90),
+        ]
+        for skill_name, topic, title, provider, url, diff, dur in resource_seed:
+            if skill_name in skill_objs:
+                db.add(LearningResource(
+                    skill_id=skill_objs[skill_name].id, topic=topic, title=title,
+                    provider=provider, url=url, difficulty=diff, duration_minutes=dur,
                 ))
 
         # --- Super Admin ---

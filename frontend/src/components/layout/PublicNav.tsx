@@ -29,12 +29,9 @@ const roleProfile: Record<Role, string> = {
 // Role-specific secondary link shown next to Dashboard/Profile/Logout.
 // Every "to" here is a real route that already exists in App.tsx.
 const roleLinks: Record<Role, { label: string; to: string }[]> = {
-  student: [{ label: "Opportunities", to: "/student/opportunities" }],
+  student: [],
   college: [{ label: "Students", to: "/college/students" }],
-  industry: [
-    { label: "Talent", to: "/industry/candidates" },
-    { label: "Opportunities", to: "/industry/opportunities" },
-  ],
+  industry: [{ label: "Talent", to: "/industry/candidates" }],
   admin: [{ label: "Moderation", to: "/admin/moderation" }],
 }
 
@@ -95,7 +92,12 @@ export function PublicNav() {
         {/* Desktop nav */}
         <nav className="hidden items-center gap-7 text-sm text-muted md:flex">
           <Link to="/" className="hover:text-foreground">Home</Link>
-          <Link to="/opportunities" className="hover:text-foreground">Opportunities</Link>
+                    <Link
+            to={user?.role === "student" ? "/student/opportunities" : user?.role === "industry" ? "/industry/opportunities" : "/opportunities"}
+            className="hover:text-foreground"
+          >
+            Opportunities
+          </Link>
           <Link to="/student/gap" className="hover:text-foreground">Skill Intelligence</Link>
           <Link to="/student/ai-roadmap" className="hover:text-foreground">Roadmap</Link>
           {user && roleLinks[user.role].map((l) => (
