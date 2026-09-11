@@ -12,6 +12,7 @@ class RoleEnum(str, enum.Enum):
     college = "college"
     industry = "industry"
     admin = "admin"
+    academician = "academician"
 
 
 class User(Base):
@@ -28,6 +29,7 @@ class User(Base):
     student_profile = relationship("StudentProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     college_profile = relationship("CollegeProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     industry_profile = relationship("IndustryProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    academician_profile = relationship("AcademicianProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 
 class StudentProfile(Base):

@@ -13,6 +13,7 @@ const roleHome: Record<Role, string> = {
   college: "/college",
   industry: "/industry",
   admin: "/admin",
+  academician: "/academician",
 }
 
 // Only the student role has a dedicated "profile" page (Skill Passport).
@@ -24,6 +25,7 @@ const roleProfile: Record<Role, string> = {
   college: "/college",
   industry: "/industry",
   admin: "/admin",
+  academician: "/academician/profile",
 }
 
 // Role-specific secondary link shown next to Dashboard/Profile/Logout.
@@ -33,6 +35,7 @@ const roleLinks: Record<Role, { label: string; to: string }[]> = {
   college: [{ label: "Students", to: "/college/students" }],
   industry: [{ label: "Talent", to: "/industry/candidates" }],
   admin: [{ label: "Moderation", to: "/admin/moderation" }],
+  academician: [{ label: "Students", to: "/academician/students" }],
 }
 
 const publicLinks = [
@@ -93,7 +96,7 @@ export function PublicNav() {
         <nav className="hidden items-center gap-7 text-sm text-muted md:flex">
           <Link to="/" className="hover:text-foreground">Home</Link>
                     <Link
-            to={user?.role === "student" ? "/student/opportunities" : user?.role === "industry" ? "/industry/opportunities" : "/opportunities"}
+            to={user?.role === "student" ? "/student/opportunities" : user?.role === "industry" ? "/industry/opportunities" : user?.role === "academician" ? "/academician/opportunities" : "/opportunities"}
             className="hover:text-foreground"
           >
             Opportunities

@@ -12,12 +12,13 @@ class RequiredSkillIn(BaseModel):
 class OpportunityCreate(BaseModel):
     title: str
     role_type: str = "internship"
+    audience: str = "student"  # "student" | "academician"
     description: str = ""
     location: str = "Remote"
     min_year_of_study: int = 1
     final_year_only: bool = False
     stipend_or_ctc: str = ""
-    required_skills: list[RequiredSkillIn]
+    required_skills: list[RequiredSkillIn] = []
 
 
 class RequiredSkillOut(BaseModel):
@@ -33,6 +34,7 @@ class OpportunityOut(BaseModel):
     id: int
     title: str
     role_type: str
+    audience: str = "student"
     description: str
     location: str
     company_name: str
@@ -74,8 +76,11 @@ class ApplicationOut(BaseModel):
     opportunity_id: int
     opportunity_title: str
     company_name: str
-    student_id: int
+    applicant_type: str = "student"  # "student" | "academician"
+    student_id: Optional[int] = None
     student_name: Optional[str] = None
+    academician_id: Optional[int] = None
+    academician_name: Optional[str] = None
     status: str
     match_score: float
     applied_at: datetime

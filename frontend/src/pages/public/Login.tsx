@@ -8,7 +8,7 @@ import { GraduationCap, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 
 const roleHome: Record<string, string> = {
-  student: "/student", college: "/college", industry: "/industry", admin: "/admin",
+  student: "/student", college: "/college", industry: "/industry", admin: "/admin", academician: "/academician",
 }
 
 export default function Login() {

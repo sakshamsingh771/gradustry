@@ -41,8 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (role: Role, payload: object) => {
     setLoading(true)
     try {
-      const fn = { student: authApi.registerStudent, college: authApi.registerCollege, industry: authApi.registerIndustry }[
-        role as "student" | "college" | "industry"
+      const fn = { student: authApi.registerStudent, college: authApi.registerCollege, industry: authApi.registerIndustry, academician: authApi.registerAcademician }[
+        role as "student" | "college" | "industry" | "academician"
       ]
       const res = await fn(payload)
       return persist(res.data)

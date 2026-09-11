@@ -48,6 +48,7 @@ def _to_out(opp: Opportunity) -> OpportunityOut:
         id=opp.id,
         title=opp.title,
         role_type=opp.role_type,
+        audience=opp.audience,
         description=opp.description,
         location=opp.location,
         company_name=company_name,
@@ -147,6 +148,7 @@ def create_opportunity(
         industry_id=profile.id,
         title=payload.title,
         role_type=payload.role_type,
+        audience=payload.audience if payload.audience in ("student", "academician") else "student",
         description=payload.description,
         location=payload.location,
         min_year_of_study=payload.min_year_of_study,
@@ -176,7 +178,9 @@ def create_opportunity(
 
 @router.get("", response_model=List[OpportunityOut])
 def list_opportunities(db: Session = Depends(get_db)):
-    opps = db.query(Opportunity).filter(Opportunity.is_active == 1).order_by(Opportunity.created_at.desc()).all()
+    opps = db.query(Opportunity).filter(
+        Opportunity.is_active == 1, Opportunity.audience == "student"
+    ).order_by(Opportunity.created_at.desc()).all()
     return [_to_out(o) for o in opps]
 
 
@@ -193,7 +197,7 @@ async def matches_for_student(db: Session = Depends(get_db), user: User = Depend
     student_skills = _student_skill_map(db, profile.id)
     student_dict = {"year_of_study": profile.year_of_study}
 
-    opps = db.query(Opportunity).filter(Opportunity.is_active == 1).all()
+    opps = db.query(Opportunity).filter(Opportunity.is_active == 1, Opportunity.audience == "student").all()
     results = []
 
     for opp in opps:
@@ -225,6 +229,8 @@ async def apply(payload: ApplyRequest, db: Session = Depends(get_db), user: User
     opp = db.query(Opportunity).filter(Opportunity.id == payload.opportunity_id).first()
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    if opp.audience != "student":
+        raise HTTPException(status_code=400, detail="This opportunity is not open to students")
 
     existing = db.query(Application).filter(
         Application.opportunity_id == opp.id, Application.student_id == profile.id
@@ -266,6 +272,7 @@ async def apply(payload: ApplyRequest, db: Session = Depends(get_db), user: User
         opportunity_id=opp.id,
         opportunity_title=opp.title,
         company_name=company_name,
+        applicant_type="student",
         student_id=profile.id,
         student_name=user.full_name,
         status=application.status,
@@ -289,6 +296,7 @@ def my_applications(db: Session = Depends(get_db), user: User = Depends(require_
             opportunity_id=a.opportunity_id,
             opportunity_title=opp_title,
             company_name=company_name,
+            applicant_type="student",
             student_id=profile.id,
             student_name=user.full_name,
             status=a.status,
@@ -311,18 +319,34 @@ def applications_for_opportunity(
     
     results = []
     for a in apps:
-        student_name = a.student.user.full_name if (a.student and a.student.user) else "Unknown Student"
-        results.append(ApplicationOut(
-            id=a.id,
-            opportunity_id=a.opportunity_id,
-            opportunity_title=opp.title,
-            company_name=profile.company_name,
-            student_id=a.student_id,
-            student_name=student_name,
-            status=a.status,
-            match_score=a.match_score,
-            applied_at=a.applied_at,
-        ))
+        if a.academician_id is not None:
+            academician_name = a.academician.user.full_name if (a.academician and a.academician.user) else "Unknown Academician"
+            results.append(ApplicationOut(
+                id=a.id,
+                opportunity_id=a.opportunity_id,
+                opportunity_title=opp.title,
+                company_name=profile.company_name,
+                applicant_type="academician",
+                academician_id=a.academician_id,
+                academician_name=academician_name,
+                status=a.status,
+                match_score=a.match_score,
+                applied_at=a.applied_at,
+            ))
+        else:
+            student_name = a.student.user.full_name if (a.student and a.student.user) else "Unknown Student"
+            results.append(ApplicationOut(
+                id=a.id,
+                opportunity_id=a.opportunity_id,
+                opportunity_title=opp.title,
+                company_name=profile.company_name,
+                applicant_type="student",
+                student_id=a.student_id,
+                student_name=student_name,
+                status=a.status,
+                match_score=a.match_score,
+                applied_at=a.applied_at,
+            ))
     return results
 
 
@@ -337,7 +361,10 @@ def update_application_status(
     if not app_ or not app_.opportunity or app_.opportunity.industry_id != profile.id:
         raise HTTPException(status_code=404, detail="Application not found")
         
-    valid_statuses = {"applied", "shortlisted", "assessment", "interview", "selected", "rejected"}
+    valid_statuses = {
+        "applied", "shortlisted", "assessment", "interview", "selected", "rejected",
+        "accepted", "in_progress", "completed",
+    }
     if payload.status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Status must be one of {sorted(valid_statuses)}")
         
@@ -345,14 +372,31 @@ def update_application_status(
     db.commit()
     db.refresh(app_)
     
-    student_name = app_.student.user.full_name if (app_.student and app_.student.user) else "Unknown Student"
     opp_title = app_.opportunity.title if app_.opportunity else "Unknown Opportunity"
-    
+
+    if app_.academician_id is not None:
+        academician_name = app_.academician.user.full_name if (app_.academician and app_.academician.user) else "Unknown Academician"
+        return ApplicationOut(
+            id=app_.id,
+            opportunity_id=app_.opportunity_id,
+            opportunity_title=opp_title,
+            company_name=profile.company_name,
+            applicant_type="academician",
+            academician_id=app_.academician_id,
+            academician_name=academician_name,
+            status=app_.status,
+            match_score=app_.match_score,
+            applied_at=app_.applied_at,
+        )
+
+    student_name = app_.student.user.full_name if (app_.student and app_.student.user) else "Unknown Student"
+
     return ApplicationOut(
         id=app_.id,
         opportunity_id=app_.opportunity_id,
         opportunity_title=opp_title,
         company_name=profile.company_name,
+        applicant_type="student",
         student_id=app_.student_id,
         student_name=student_name,
         status=app_.status,
@@ -387,33 +431,34 @@ def submit_feedback(
     )
     db.add(feedback)
 
-    for rs in app_.opportunity.required_skills:
-        ss = db.query(StudentSkill).filter(
-            StudentSkill.student_id == app_.student_id, StudentSkill.skill_id == rs.skill_id
-        ).first()
-        
-        if not ss:
-            ss = StudentSkill(student_id=app_.student_id, skill_id=rs.skill_id, proficiency_score=0.0, confidence_level="None")
-            db.add(ss)
+    if app_.student_id is not None:
+        for rs in app_.opportunity.required_skills:
+            ss = db.query(StudentSkill).filter(
+                StudentSkill.student_id == app_.student_id, StudentSkill.skill_id == rs.skill_id
+            ).first()
+
+            if not ss:
+                ss = StudentSkill(student_id=app_.student_id, skill_id=rs.skill_id, proficiency_score=0.0, confidence_level="None")
+                db.add(ss)
+                db.flush()
+
+            signal = evidence_engine.score_single_evidence(
+                "industry_feedback", "verified", override_score=payload.technical_skill * 10
+            )
+            db.add(Evidence(
+                student_skill_id=ss.id,
+                type="industry_feedback",
+                title=f"Industry feedback — {app_.opportunity.title}",
+                description=payload.comments,
+                status="verified",
+                signal_score=signal,
+            ))
             db.flush()
 
-        signal = evidence_engine.score_single_evidence(
-            "industry_feedback", "verified", override_score=payload.technical_skill * 10
-        )
-        db.add(Evidence(
-            student_skill_id=ss.id,
-            type="industry_feedback",
-            title=f"Industry feedback — {app_.opportunity.title}",
-            description=payload.comments,
-            status="verified",
-            signal_score=signal,
-        ))
-        db.flush()
-
-        evidences = [{"type": e.type, "status": e.status, "signal_score": e.signal_score} for e in ss.evidences]
-        result = evidence_engine.recompute_student_skill(evidences)
-        ss.proficiency_score = result["proficiency_score"]
-        ss.confidence_level = result["confidence_level"]
+            evidences = [{"type": e.type, "status": e.status, "signal_score": e.signal_score} for e in ss.evidences]
+            result = evidence_engine.recompute_student_skill(evidences)
+            ss.proficiency_score = result["proficiency_score"]
+            ss.confidence_level = result["confidence_level"]
 
     db.commit()
     return {"detail": "Feedback submitted and added to the student's Skill Passport"}

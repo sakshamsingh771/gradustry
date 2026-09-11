@@ -12,7 +12,12 @@ class Opportunity(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     industry_id: Mapped[int] = mapped_column(ForeignKey("industry_profiles.id"), index=True)
     title: Mapped[str] = mapped_column(String(255))
-    role_type: Mapped[str] = mapped_column(String(50), default="internship")  # internship|job
+    role_type: Mapped[str] = mapped_column(String(50), default="internship")
+    # role_type values:
+    #   audience="student"      -> internship | job
+    #   audience="academician"  -> faculty_internship | industrial_training | fdp |
+    #                               consultancy | research_collaboration | guest_lecture | mentorship
+    audience: Mapped[str] = mapped_column(String(20), default="student", index=True)  # student|academician
     description: Mapped[str] = mapped_column(Text, default="")
     location: Mapped[str] = mapped_column(String(255), default="Remote")
     min_year_of_study: Mapped[int] = mapped_column(Integer, default=1)
@@ -44,15 +49,21 @@ class Application(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     opportunity_id: Mapped[int] = mapped_column(ForeignKey("opportunities.id"), index=True)
-    student_id: Mapped[int] = mapped_column(ForeignKey("student_profiles.id"), index=True)
+    # Exactly one of student_id / academician_id is set, depending on the
+    # opportunity's audience. Both nullable so the same table + status
+    # pipeline serves student applications and academician participation.
+    student_id: Mapped[int | None] = mapped_column(ForeignKey("student_profiles.id"), index=True, nullable=True)
+    academician_id: Mapped[int | None] = mapped_column(ForeignKey("academician_profiles.id"), index=True, nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="applied")
-    # applied -> shortlisted -> assessment -> interview -> selected / rejected
+    # student flow:      applied -> shortlisted -> assessment -> interview -> selected / rejected
+    # academician flow:  applied -> accepted / rejected -> in_progress -> completed
     match_score: Mapped[float] = mapped_column(Float, default=0.0)
     match_explanation: Mapped[dict] = mapped_column(JSON, default=dict)
     applied_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     opportunity = relationship("Opportunity", back_populates="applications")
     student = relationship("StudentProfile")
+    academician = relationship("AcademicianProfile")
     feedback = relationship("IndustryFeedback", back_populates="application", uselist=False, cascade="all, delete-orphan")
 
 

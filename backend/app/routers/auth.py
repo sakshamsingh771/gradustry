@@ -6,7 +6,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.database import get_db
 from app.core.security import hash_password, verify_password, create_access_token
 from app.models.user import User, StudentProfile, CollegeProfile, IndustryProfile, RoleEnum
-from app.schemas.auth import StudentRegister, CollegeRegister, IndustryRegister, LoginRequest, TokenResponse
+from app.models.academician import AcademicianProfile
+from app.schemas.auth import (
+    StudentRegister, CollegeRegister, IndustryRegister, AcademicianRegister,
+    LoginRequest, TokenResponse,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -150,6 +154,44 @@ def register_industry(request: Request, payload: IndustryRegister, db: Session =
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to register industry account"
+        )
+
+
+@router.post("/register/academician", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+def register_academician(request: Request, payload: AcademicianRegister, db: Session = Depends(get_db)):
+    email = _normalize_email(payload.email)
+    _ensure_email_free(db, email)
+
+    try:
+        user = User(
+            email=email,
+            hashed_password=hash_password(payload.password),
+            full_name=payload.full_name,
+            role=RoleEnum.academician.value,
+            is_active=True
+        )
+        db.add(user)
+        db.flush()
+
+        profile = AcademicianProfile(
+            user_id=user.id,
+            designation=payload.designation,
+            institution=payload.institution,
+            department=payload.department,
+            area_of_expertise=payload.area_of_expertise,
+            experience_years=payload.experience_years,
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(user)
+        return _issue_token(user)
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to register academician account"
         )
 
 

@@ -13,7 +13,7 @@ import {
   Search, User, School, Compass, CheckCircle2,
 } from "lucide-react"
 
-const roleHome: Record<string, string> = { student: "/student", college: "/college", industry: "/industry", admin: "/admin" }
+const roleHome: Record<string, string> = { student: "/student", college: "/college", industry: "/industry", admin: "/admin", academician: "/academician" }
 
 const understandCards = [
   { icon: BadgeCheck, title: "Skills", body: "What you know, scored per skill." },

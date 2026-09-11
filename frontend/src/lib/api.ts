@@ -23,7 +23,7 @@ api.interceptors.response.use(
 );
 
 // ---------- Types ----------
-export type Role = "student" | "college" | "industry" | "admin";
+export type Role = "student" | "college" | "industry" | "admin" | "academician";
 
 export interface AuthUser {
   user_id: number;
@@ -214,6 +214,7 @@ export interface OpportunityOut {
   id: number;
   title: string;
   role_type: string;
+  audience: "student" | "academician";
   description: string;
   location: string;
   company_name: string;
@@ -247,8 +248,11 @@ export interface ApplicationOut {
   opportunity_id: number;
   opportunity_title: string;
   company_name: string;
-  student_id: number;
+  applicant_type: "student" | "academician";
+  student_id?: number | null;
   student_name?: string;
+  academician_id?: number | null;
+  academician_name?: string;
   status: string;
   match_score: number;
   applied_at: string;
@@ -264,6 +268,8 @@ export const authApi = {
     api.post("/auth/register/college", payload),
   registerIndustry: (payload: object) =>
     api.post("/auth/register/industry", payload),
+  registerAcademician: (payload: object) =>
+    api.post("/auth/register/academician", payload),
 };
 
 // ---------- Student ----------
@@ -352,6 +358,53 @@ export const opportunityApi = {
 export const collegeApi = {
   dashboard: () => api.get("/college/dashboard"),
   students: () => api.get("/college/students"),
+};
+
+// ---------- Academician ----------
+export interface AcademicianProfile {
+  full_name: string;
+  email: string;
+  designation: string;
+  institution: string;
+  department: string;
+  area_of_expertise: string;
+  experience_years: number;
+  bio: string;
+  verified: boolean;
+  college_id: number | null;
+  college_name: string | null;
+}
+
+export interface AcademicianDashboard {
+  full_name: string;
+  institution: string;
+  designation: string;
+  profile_complete: boolean;
+  college_membership_status: string | null;
+  college_name: string | null;
+  total_students_visible: number;
+  applications_total: number;
+  applications_by_status: Record<string, number>;
+  open_opportunities: number;
+}
+
+export const academicianApi = {
+  myProfile: () => api.get<AcademicianProfile>("/academician/profile"),
+  updateProfile: (
+    payload: Partial<{
+      designation: string; institution: string; department: string;
+      area_of_expertise: string; experience_years: number; bio: string;
+    }>,
+  ) => api.put<AcademicianProfile>("/academician/profile", payload),
+  dashboard: () => api.get<AcademicianDashboard>("/academician/dashboard"),
+  colleges: () => api.get<{ id: number; college_name: string; city: string }[]>("/academician/colleges"),
+  joinCollege: (collegeId: number) =>
+    api.post(`/academician/join-college?college_id=${collegeId}`),
+  students: () => api.get<{ student_id: number; full_name: string; branch: string; year_of_study: number; career_goal: string; readiness: number }[]>("/academician/students"),
+  opportunities: () => api.get<OpportunityOut[]>("/academician/opportunities"),
+  apply: (opportunityId: number) =>
+    api.post<ApplicationOut>("/academician/opportunities/apply", { opportunity_id: opportunityId }),
+  myApplications: () => api.get<ApplicationOut[]>("/academician/applications/mine"),
 };
 
 // ---------- Admin ----------

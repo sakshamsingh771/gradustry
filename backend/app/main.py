@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings, assert_production_safe
 from app.core.rate_limit import limiter
-from app.routers import auth, students, gap, assessments, opportunities, college, admin, profile_extras, ai as ai_router, community, pulse
+from app.routers import auth, students, gap, assessments, opportunities, college, admin, profile_extras, ai as ai_router, community, pulse, academician
 
 assert_production_safe()
 
@@ -36,6 +36,7 @@ app.include_router(admin.router)
 app.include_router(ai_router.router)
 app.include_router(community.router)
 app.include_router(pulse.router)
+app.include_router(academician.router)
 
 
 @app.get("/api/health")

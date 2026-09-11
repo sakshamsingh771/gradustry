@@ -39,6 +39,13 @@ import Moderation from "@/pages/admin/Moderation"
 import AdminColleges from "@/pages/admin/Colleges"
 import AdminCompanies from "@/pages/admin/Companies"
 
+import AcademicianLayout from "@/pages/academician/AcademicianLayout"
+import AcademicianDashboard from "@/pages/academician/Dashboard"
+import AcademicianProfile from "@/pages/academician/Profile"
+import AcademicianOpportunities from "@/pages/academician/Opportunities"
+import AcademicianApplications from "@/pages/academician/Applications"
+import AcademicianStudents from "@/pages/academician/Students"
+
 export default function App() {
   return (
     <Routes>
@@ -81,6 +88,14 @@ export default function App() {
         <Route path="moderation" element={<Moderation />} />
         <Route path="colleges" element={<AdminColleges />} />
         <Route path="companies" element={<AdminCompanies />} />
+      </Route>
+
+      <Route path="/academician" element={<ProtectedRoute allow={["academician"]}><AcademicianLayout /></ProtectedRoute>}>
+        <Route index element={<AcademicianDashboard />} />
+        <Route path="profile" element={<AcademicianProfile />} />
+        <Route path="opportunities" element={<AcademicianOpportunities />} />
+        <Route path="applications" element={<AcademicianApplications />} />
+        <Route path="students" element={<AcademicianStudents />} />
       </Route>
 
       <Route path="*" element={<Landing />} />

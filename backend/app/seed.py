@@ -13,9 +13,10 @@ from app.core.database import Base, engine, SessionLocal
 from app.core.security import hash_password
 from app import models  # noqa: F401
 from app.models.user import User, StudentProfile, CollegeProfile, IndustryProfile, RoleEnum
+from app.models.academician import AcademicianProfile
 from app.models.skill import Skill, StudentSkill, Evidence, SkillScoreHistory
 from app.models.assessment import CareerRole, RoleSkillRequirement
-from app.models.opportunity import Opportunity, OpportunitySkill
+from app.models.opportunity import Opportunity, OpportunitySkill, Application
 from app.ai import evidence_engine
 
 SKILLS = {
@@ -168,6 +169,7 @@ def run():
 
         opp = Opportunity(
             industry_id=industry.id, title="Backend Developer Intern", role_type="internship",
+            audience="student",
             description="Work on a FastAPI-based microservice handling real production traffic.",
             location="Remote", min_year_of_study=3, final_year_only=0, stipend_or_ctc="₹25,000/month",
         )
@@ -175,6 +177,44 @@ def run():
         db.flush()
         for skill_name, min_p, weight in [("Python", 75, 1.5), ("FastAPI", 65, 1.5), ("SQL", 55, 1.0), ("Docker", 40, 0.8)]:
             db.add(OpportunitySkill(opportunity_id=opp.id, skill_id=skill_objs[skill_name].id, min_proficiency=min_p, weight=weight))
+
+        # --- Demo Academician + academician-facing opportunity + membership ---
+        academician_user = User(
+            email="academician@gradustry.dev", hashed_password=hash_password("academician123"),
+            full_name="Dr. Meera Nair", role=RoleEnum.academician,
+        )
+        db.add(academician_user)
+        db.flush()
+        academician = AcademicianProfile(
+            user_id=academician_user.id, college_id=college.id,
+            designation="Associate Professor", institution=college.college_name,
+            department="Computer Science & Engineering",
+            area_of_expertise="Machine Learning, Distributed Systems",
+            experience_years=9,
+            bio="Researches applied ML and mentors final-year capstone projects.",
+            verified=True,
+        )
+        db.add(academician)
+        db.flush()
+
+        db.add(CollegeMembership(
+            user_id=academician_user.id, college_id=college.id,
+            status=MembershipStatus.verified, verification_method=VerificationMethod.platform_admin,
+        ))
+
+        faculty_opp = Opportunity(
+            industry_id=industry.id, title="Industry-Academia Research Collaboration on Cloud ML Pipelines",
+            role_type="research_collaboration", audience="academician",
+            description="Joint research engagement between faculty and our applied ML team on "
+                        "cost-efficient cloud-native training pipelines. Demo/seed data — not a real posting.",
+            location="Hybrid", stipend_or_ctc="Sponsored research grant",
+        )
+        db.add(faculty_opp)
+        db.flush()
+
+        db.add(Application(
+            opportunity_id=faculty_opp.id, academician_id=academician.id, status="applied",
+        ))
 
         from app.models.community import Community, CommunityType
         for name, description in [
@@ -210,6 +250,7 @@ def run():
         print("  College:  college@gradustry.dev / college123")
         print("  Student:  student@gradustry.dev / student123")
         print("  Industry: industry@gradustry.dev / industry123")
+        print("  Academician: academician@gradustry.dev / academician123")
     finally:
         db.close()
 

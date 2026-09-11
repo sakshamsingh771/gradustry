@@ -5,18 +5,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { GraduationCap, User, School, Building2 } from "lucide-react"
+import { GraduationCap, User, School, Building2, BookUser } from "lucide-react"
 import { toast } from "sonner"
 import type { Role } from "@/lib/api"
 
 const roleHome: Record<string, string> = {
-  student: "/student", college: "/college", industry: "/industry",
+  student: "/student", college: "/college", industry: "/industry", academician: "/academician",
 }
 
 const roleCards = [
   { role: "student" as Role, icon: User, title: "Student", body: "Build your Skill Passport and find opportunities." },
   { role: "college" as Role, icon: School, title: "College", body: "Track student readiness and curriculum gaps." },
   { role: "industry" as Role, icon: Building2, title: "Industry", body: "Post roles and hire with explainable matching." },
+  { role: "academician" as Role, icon: BookUser, title: "Academician / Faculty", body: "Discover FDPs, consultancy & research collaboration; mentor students." },
 ]
 
 export default function Register() {
@@ -38,6 +39,13 @@ export default function Register() {
         payload = { full_name: form.full_name, email: form.email, password: form.password, branch: form.branch || "", year_of_study: Number(form.year_of_study) || 1, career_goal: form.career_goal || "" }
       } else if (role === "college") {
         payload = { full_name: form.full_name, email: form.email, password: form.password, college_name: form.college_name, city: form.city || "" }
+      } else if (role === "academician") {
+        payload = {
+          full_name: form.full_name, email: form.email, password: form.password,
+          designation: form.designation || "", institution: form.institution || "",
+          department: form.department || "", area_of_expertise: form.area_of_expertise || "",
+          experience_years: Number(form.experience_years) || 0,
+        }
       } else {
         payload = { full_name: form.full_name, email: form.email, password: form.password, company_name: form.company_name, industry_sector: form.industry_sector || "" }
       }
@@ -124,6 +132,35 @@ export default function Register() {
                   <div className="space-y-1.5">
                     <Label>City</Label>
                     <Input value={form.city || ""} onChange={set("city")} />
+                  </div>
+                </>
+              )}
+
+              {role === "academician" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Designation</Label>
+                      <Input value={form.designation || ""} onChange={set("designation")} placeholder="Assistant Professor" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Experience (years)</Label>
+                      <Input type="number" min={0} value={form.experience_years || ""} onChange={set("experience_years")} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Institution</Label>
+                    <Input value={form.institution || ""} onChange={set("institution")} placeholder="Your college / institute name" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Department</Label>
+                      <Input value={form.department || ""} onChange={set("department")} placeholder="Computer Science" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Area of expertise</Label>
+                      <Input value={form.area_of_expertise || ""} onChange={set("area_of_expertise")} placeholder="Machine Learning" />
+                    </div>
                   </div>
                 </>
               )}

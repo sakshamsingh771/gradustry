@@ -1,4 +1,5 @@
 from app.models.user import User, StudentProfile, CollegeProfile, IndustryProfile, RoleEnum  # noqa
+from app.models.academician import AcademicianProfile  # noqa
 from app.models.skill import Skill, StudentSkill, SkillScoreHistory, Evidence  # noqa
 from app.models.profile_extras import Education, Project, Experience, Certification, Achievement  # noqa
 from app.models.college_membership import CollegeMembership, MembershipStatus, VerificationMethod  # noqa

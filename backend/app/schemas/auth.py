@@ -29,6 +29,17 @@ class IndustryRegister(BaseModel):
     website: str = ""
 
 
+class AcademicianRegister(BaseModel):
+    full_name: str
+    email: EmailStr
+    password: str = Field(min_length=6)
+    designation: str = ""
+    institution: str = ""
+    department: str = ""
+    area_of_expertise: str = ""
+    experience_years: int = 0
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
