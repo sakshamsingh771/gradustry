@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.deps import require_roles
 from app.models.user import User, StudentProfile, IndustryProfile
 from app.models.skill import Skill, StudentSkill, Evidence, SkillScoreHistory
+from app.ai.skill_taxonomy import get_or_create_skill
 from app.models.opportunity import Opportunity, OpportunitySkill, Application, IndustryFeedback
 from app.schemas.opportunity import (
     OpportunityCreate, OpportunityOut, OpportunityMatchOut, ApplyRequest,
@@ -60,6 +61,7 @@ def _to_out(opp: Opportunity) -> OpportunityOut:
         duration=opp.duration,
         capacity=opp.capacity,
         eligibility_notes=opp.eligibility_notes,
+        application_deadline=opp.application_deadline,
         enrolled_count=enrolled_count,
         created_at=opp.created_at,
         required_skills=required_skills_data,
@@ -74,6 +76,7 @@ def _student_skill_map(db: Session, student_id: int) -> Dict[str, Dict[str, Any]
             skills_map[r.skill.name] = {
                 "proficiency_score": r.proficiency_score,
                 "evidence_count": len(r.evidences),
+                "confidence_level": r.confidence_level,
             }
     return skills_map
 
@@ -123,7 +126,7 @@ def _record_completion_evidence(db: Session, app_: Application) -> None:
 
 @router.get("/{opportunity_id}/candidates")
 async def discover_candidates(
-    opportunity_id: int, min_match_score: float = 50.0,
+    opportunity_id: int, min_match_score: float = 50.0, limit: int = 200,
     db: Session = Depends(get_db), user: User = Depends(require_roles("industry")),
 ):
     profile = _industry_profile(db, user)
@@ -135,7 +138,9 @@ async def discover_candidates(
     opp_dict = {"final_year_only": bool(opp.final_year_only), "min_year_of_study": opp.min_year_of_study}
 
     candidates = []
-    visible_students = db.query(StudentProfile).filter(StudentProfile.profile_visible == True).all()  # noqa: E712
+    # Phase 6: bounded scan (default 200) — prevents an unbounded full-table
+    # scan as the student base grows; raise `limit` explicitly if needed.
+    visible_students = db.query(StudentProfile).filter(StudentProfile.profile_visible == True).limit(limit).all()  # noqa: E712
     for sp in visible_students:
         student_skills = _student_skill_map(db, sp.id)
         student_dict = {"year_of_study": sp.year_of_study}
@@ -149,6 +154,8 @@ async def discover_candidates(
         candidates.append({
             "student_id": sp.id, "career_readiness": readiness, "match_score": match["match_score"],
             "matched_skills": match["explanation"]["matched_skills"],
+            "skill_breakdown": match["explanation"].get("skill_breakdown", []),
+            "eligibility_checks": match["explanation"].get("eligibility_checks", []),
             "evidence_backed_skill_count": match["explanation"]["relevant_evidence_count"],
             "already_applied": already_applied is not None,
             "application_status": already_applied.status if already_applied else None,
@@ -206,16 +213,13 @@ def create_opportunity(
         duration=payload.duration,
         capacity=payload.capacity,
         eligibility_notes=payload.eligibility_notes,
+        application_deadline=payload.application_deadline,
     )
     db.add(opp)
     db.flush()
 
     for rs in payload.required_skills:
-        skill = db.query(Skill).filter(Skill.name == rs.skill_name).first()
-        if not skill:
-            skill = Skill(name=rs.skill_name, category="General")
-            db.add(skill)
-            db.flush()
+        skill = get_or_create_skill(db, rs.skill_name)
         db.add(OpportunitySkill(
             opportunity_id=opp.id,
             skill_id=skill.id,
@@ -229,10 +233,10 @@ def create_opportunity(
 
 
 @router.get("", response_model=List[OpportunityOut])
-def list_opportunities(db: Session = Depends(get_db)):
+def list_opportunities(limit: int = 100, db: Session = Depends(get_db)):
     opps = db.query(Opportunity).filter(
         Opportunity.is_active == 1, Opportunity.audience == "student"
-    ).order_by(Opportunity.created_at.desc()).all()
+    ).order_by(Opportunity.created_at.desc()).limit(limit).all()
     return [_to_out(o) for o in opps]
 
 
@@ -296,6 +300,9 @@ async def apply(payload: ApplyRequest, db: Session = Depends(get_db), user: User
         ).count()
         if active_count >= opp.capacity:
             raise HTTPException(status_code=400, detail="This program has reached its seat capacity")
+
+    if opp.application_deadline is not None and datetime.utcnow() > opp.application_deadline:
+        raise HTTPException(status_code=400, detail="The application deadline for this opportunity has passed")
 
     student_skills = _student_skill_map(db, profile.id)
     required = []
@@ -421,7 +428,7 @@ def update_application_status(
         raise HTTPException(status_code=404, detail="Application not found")
         
     valid_statuses = {
-        "applied", "shortlisted", "assessment", "interview", "selected", "rejected",
+        "invited", "applied", "shortlisted", "assessment", "interview", "selected", "rejected",
         "accepted", "in_progress", "completed",
     }
     if payload.status not in valid_statuses:
@@ -498,28 +505,35 @@ def submit_feedback(
         teamwork=payload.teamwork,
         professionalism=payload.professionalism,
         comments=payload.comments,
+        skill_ratings=[r.model_dump() for r in payload.skill_ratings],
     )
     db.add(feedback)
 
+    # Phase 5 fix: evidence is created ONLY for skills the industry actually
+    # rated (payload.skill_ratings), never blanket-applied across every one
+    # of the opportunity's required_skills — feedback must not touch a skill
+    # that wasn't genuinely evaluated.
     if app_.student_id is not None:
-        for rs in app_.opportunity.required_skills:
+        for rating in payload.skill_ratings:
+            skill = get_or_create_skill(db, rating.skill_name)
             ss = db.query(StudentSkill).filter(
-                StudentSkill.student_id == app_.student_id, StudentSkill.skill_id == rs.skill_id
+                StudentSkill.student_id == app_.student_id, StudentSkill.skill_id == skill.id
             ).first()
 
             if not ss:
-                ss = StudentSkill(student_id=app_.student_id, skill_id=rs.skill_id, proficiency_score=0.0, confidence_level="None")
+                ss = StudentSkill(student_id=app_.student_id, skill_id=skill.id, proficiency_score=0.0, confidence_level="None")
                 db.add(ss)
                 db.flush()
 
+            # rating is out of 5 -> scale to the 0-100 signal range used everywhere else.
             signal = evidence_engine.score_single_evidence(
-                "industry_feedback", "verified", override_score=payload.technical_skill * 10
+                "industry_feedback", "verified", override_score=rating.rating * 20
             )
             db.add(Evidence(
                 student_skill_id=ss.id,
                 type="industry_feedback",
                 title=f"Industry feedback — {app_.opportunity.title}",
-                description=payload.comments,
+                description=payload.comments or f"Observed proficiency: {rating.rating}/5",
                 status="verified",
                 signal_score=signal,
             ))
@@ -529,6 +543,8 @@ def submit_feedback(
             result = evidence_engine.recompute_student_skill(evidences)
             ss.proficiency_score = result["proficiency_score"]
             ss.confidence_level = result["confidence_level"]
+            ss.last_assessed_at = datetime.utcnow()
+            db.add(SkillScoreHistory(student_skill_id=ss.id, score=ss.proficiency_score, reason="industry feedback"))
 
     db.commit()
     return {"detail": "Feedback submitted and added to the student's Skill Passport"}

@@ -6,38 +6,80 @@ human-readable explanation. Per spec: do not rely purely on an LLM for
 ranking — this module IS the ranking model. An LLM would only be used
 downstream to phrase the explanation in natural language, which the
 frontend already does from structured fields here.
+
+Phase 5: skill-level match now reuses the exact same verification-state
+classifier as the Skill Gap Engine (app.ai.skill_gap_engine), so a
+"required skill" drives both Opportunity Matching and Skill Gap Analysis
+from one shared rule set — never two competing definitions of what counts
+as demonstrated/unverified/missing.
 """
 
+try:
+    from app.ai.skill_gap_engine import verification_state_for  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - fallback when the engine is unavailable
+    def verification_state_for(
+        current_score: float,
+        required_score: float,
+        confidence_level: str | None = None,
+        evidence_count: int = 0,
+    ) -> str:
+        """Fallback verification-state classifier used when the shared engine is unavailable."""
+        if current_score >= required_score:
+            return "demonstrated"
+        if evidence_count > 0 and confidence_level not in {"None", "Low"}:
+            return "unverified"
+        return "missing"
 
-def check_eligibility(student: dict, opportunity: dict) -> list[str]:
-    """Returns list of missing eligibility reasons; empty list = eligible."""
-    missing = []
-    if opportunity.get("final_year_only") and student.get("year_of_study", 1) < 4:
-        missing.append("Final-year eligibility")
-    if student.get("year_of_study", 1) < opportunity.get("min_year_of_study", 1):
-        missing.append(f"Minimum year of study: {opportunity.get('min_year_of_study')}")
-    return missing
+
+def check_eligibility(student: dict, opportunity: dict) -> list[dict]:
+    """Returns itemized eligibility checks: [{check, passed, detail}].
+    Only checks backed by real fields on the student/opportunity — no
+    fabricated criteria (e.g. no location/assessment gating that the data
+    model doesn't actually support)."""
+    checks = []
+
+    if opportunity.get("final_year_only"):
+        passed = student.get("year_of_study", 1) >= 4
+        checks.append({
+            "check": "Final-year eligibility", "passed": passed,
+            "detail": "Open to final-year students only." if not passed else "Meets final-year requirement.",
+        })
+
+    min_year = opportunity.get("min_year_of_study", 1)
+    if min_year > 1:
+        passed = student.get("year_of_study", 1) >= min_year
+        checks.append({
+            "check": f"Minimum year of study ({min_year})", "passed": passed,
+            "detail": f"Requires year {min_year}+; student is year {student.get('year_of_study', 1)}.",
+        })
+
+    return checks
 
 
 def score_match(student_skills: dict[str, dict], required_skills: list[dict]) -> dict:
     """
-    student_skills: {skill_name: {proficiency_score, evidence_count}}
+    student_skills: {skill_name: {proficiency_score, evidence_count, confidence_level}}
     required_skills: [{skill_name, min_proficiency, weight}]
-    Returns match_score (0-100) + matched/below-target skill lists.
+    Returns match_score (0-100) + matched/below-target skill lists + a
+    per-skill breakdown with verification state (Phase 5).
     """
     if not required_skills:
-        return {"match_score": 0.0, "matched_skills": [], "below_target_skills": [], "relevant_evidence_count": 0}
+        return {
+            "match_score": 0.0, "matched_skills": [], "below_target_skills": [],
+            "relevant_evidence_count": 0, "skill_breakdown": [],
+        }
 
     weighted_sum = 0.0
     weight_total = 0.0
     matched, below_target = [], []
     evidence_count = 0
+    skill_breakdown = []
 
     for req in required_skills:
         name = req["skill_name"]
         min_p = req["min_proficiency"]
         weight = req.get("weight", 1.0)
-        s = student_skills.get(name, {"proficiency_score": 0.0, "evidence_count": 0})
+        s = student_skills.get(name, {"proficiency_score": 0.0, "evidence_count": 0, "confidence_level": "None"})
         current = s["proficiency_score"]
         evidence_count += s.get("evidence_count", 0)
 
@@ -51,17 +93,29 @@ def score_match(student_skills: dict[str, dict], required_skills: list[dict]) ->
         else:
             below_target.append(name)
 
+        verification_state = verification_state_for(current, min_p, s.get("confidence_level", "None"), s.get("evidence_count", 0))
+        skill_breakdown.append({
+            "skill_name": name,
+            "current_score": current,
+            "required_score": min_p,
+            "percent_of_requirement": round(min(current / min_p, 1.0) * 100, 1) if min_p > 0 else 100.0,
+            "verification_state": verification_state,
+            "weight": weight,
+        })
+
     match_score = round((weighted_sum / weight_total) * 100, 1) if weight_total > 0 else 0.0
     return {
         "match_score": match_score,
         "matched_skills": matched,
         "below_target_skills": below_target,
         "relevant_evidence_count": evidence_count,
+        "skill_breakdown": skill_breakdown,
     }
 
 
 def build_match(student: dict, opportunity: dict, student_skills: dict, required_skills: list[dict]) -> dict:
-    missing_eligibility = check_eligibility(student, opportunity)
+    eligibility_checks = check_eligibility(student, opportunity)
+    missing_eligibility = [c["check"] for c in eligibility_checks if not c["passed"]]
     score_result = score_match(student_skills, required_skills)
     is_eligible = len(missing_eligibility) == 0
 
@@ -71,6 +125,8 @@ def build_match(student: dict, opportunity: dict, student_skills: dict, required
             "matched_skills": score_result["matched_skills"],
             "below_target_skills": score_result["below_target_skills"],
             "missing_eligibility": missing_eligibility,
+            "eligibility_checks": eligibility_checks,
+            "skill_breakdown": score_result["skill_breakdown"],
             "relevant_evidence_count": score_result["relevant_evidence_count"],
             "is_eligible": is_eligible,
         },

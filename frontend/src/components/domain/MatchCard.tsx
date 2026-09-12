@@ -28,20 +28,28 @@ export function MatchCard({ match, onApply, applied, onCloseGap }: { match: Oppo
           <Badge variant="success">Eligible</Badge>
         )}
         <div className="space-y-1.5 text-sm">
-          {ex.matched_skills.map((s) => (
-            <div key={s} className="flex items-center gap-2 text-success">
-              <CheckCircle2 className="h-4 w-4 shrink-0" /> {s} requirement matched
-            </div>
-          ))}
-          {ex.below_target_skills.map((s) => (
-            <div key={s} className="flex items-center justify-between gap-2 text-warning">
-              <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {s} below target</span>
-              <Button size="sm" variant="ghost" className="h-auto py-0.5 text-xs" onClick={() => onCloseGap(s)}>Close gap</Button>
-            </div>
-          ))}
-          {ex.missing_eligibility.map((s) => (
-            <div key={s} className="flex items-center gap-2 text-danger">
-              <XCircle className="h-4 w-4 shrink-0" /> Missing: {s}
+          {ex.skill_breakdown.map((s) => {
+            const cfg = {
+              demonstrated: { icon: CheckCircle2, cls: "text-success", label: "meets requirement" },
+              partially_demonstrated: { icon: AlertTriangle, cls: "text-warning", label: "partially meets requirement" },
+              unverified: { icon: AlertTriangle, cls: "text-muted", label: "unverified — needs stronger evidence" },
+              missing: { icon: XCircle, cls: "text-danger", label: "missing" },
+            }[s.verification_state]
+            const Icon = cfg.icon
+            return (
+              <div key={s.skill_name} className={`flex items-center justify-between gap-2 ${cfg.cls}`}>
+                <span className="flex items-center gap-2">
+                  <Icon className="h-4 w-4 shrink-0" /> {s.skill_name} — {s.current_score.toFixed(0)}% (needs {s.required_score.toFixed(0)}%) · {cfg.label}
+                </span>
+                {s.verification_state !== "demonstrated" && (
+                  <Button size="sm" variant="ghost" className="h-auto py-0.5 text-xs" onClick={() => onCloseGap(s.skill_name)}>Close gap</Button>
+                )}
+              </div>
+            )
+          })}
+          {ex.eligibility_checks.filter((c) => !c.passed).map((c) => (
+            <div key={c.check} className="flex items-center gap-2 text-danger">
+              <XCircle className="h-4 w-4 shrink-0" /> {c.detail}
             </div>
           ))}
         </div>

@@ -7,7 +7,7 @@ Seed the database with enough data to demo Gradustry end-to-end:
 
 Run with:  python -m app.seed
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.core.database import Base, engine, SessionLocal
 from app.core.security import hash_password
@@ -16,7 +16,7 @@ from app.models.user import User, StudentProfile, CollegeProfile, IndustryProfil
 from app.models.academician import AcademicianProfile
 from app.models.skill import Skill, StudentSkill, Evidence, SkillScoreHistory
 from app.models.assessment import CareerRole, RoleSkillRequirement
-from app.models.opportunity import Opportunity, OpportunitySkill, Application
+from app.models.opportunity import Opportunity, OpportunitySkill, Application, IndustryFeedback
 from app.ai import evidence_engine
 
 SKILLS = {
@@ -315,6 +315,68 @@ def run():
             if not db.query(PulseArticle).filter(PulseArticle.title == title).first():
                 db.add(PulseArticle(title=title, category=category, summary=summary, source="Gradustry Pulse Desk", tags=category, relevant_skills=skills, impact=impact))
 
+        # --- Phase 5: second industry + demo matching/shortlisting/feedback pipeline ---
+        industry2_user = User(
+            email="industry2@gradustry.dev", hashed_password=hash_password("industry123"),
+            full_name="Priya Menon", role=RoleEnum.industry,
+        )
+        db.add(industry2_user)
+        db.flush()
+        industry2 = IndustryProfile(user_id=industry2_user.id, company_name="Vertex Analytics (Demo)")
+        db.add(industry2)
+        db.flush()
+
+        demo_opp = Opportunity(
+            industry_id=industry2.id, title="Data Backend Engineer Intern (Demo)",
+            role_type="internship", audience="student",
+            description="Demo/seed opportunity showing the full matching + feedback pipeline.",
+            location="Remote", min_year_of_study=2, stipend_or_ctc="₹20,000/month",
+            application_deadline=datetime.utcnow() + timedelta(days=45),
+        )
+        db.add(demo_opp)
+        db.flush()
+        for skill_name, min_p, weight in [("Python", 60, 1.5), ("SQL", 50, 1.2), ("FastAPI", 50, 1.0), ("Docker", 40, 0.8)]:
+            if skill_name in skill_objs:
+                db.add(OpportunitySkill(opportunity_id=demo_opp.id, skill_id=skill_objs[skill_name].id, min_proficiency=min_p, weight=weight))
+        db.flush()
+
+        # Student applies, gets shortlisted, then receives skill-specific feedback —
+        # demonstrating Applied -> Shortlisted -> Feedback -> Evidence -> Skill Passport.
+        demo_app = Application(opportunity_id=demo_opp.id, student_id=student.id, status="shortlisted")
+        db.add(demo_app)
+        db.flush()
+
+        from app.ai.skill_taxonomy import get_or_create_skill
+        demo_feedback = IndustryFeedback(
+            application_id=demo_app.id,
+            technical_skill=8.0, problem_solving=7.0, communication=9.0, teamwork=8.0, professionalism=9.0,
+            comments="Demo/seed feedback — strong on backend fundamentals and communication during the technical screen.",
+            skill_ratings=[
+                {"skill_name": "Python", "rating": 4.5},
+                {"skill_name": "Communication", "rating": 4.0},
+            ],
+        )
+        db.add(demo_feedback)
+        db.flush()
+        for rating in demo_feedback.skill_ratings:
+            skill = get_or_create_skill(db, rating["skill_name"])
+            ss = db.query(StudentSkill).filter(StudentSkill.student_id == student.id, StudentSkill.skill_id == skill.id).first()
+            if not ss:
+                ss = StudentSkill(student_id=student.id, skill_id=skill.id, proficiency_score=0.0, confidence_level="None")
+                db.add(ss)
+                db.flush()
+            signal = evidence_engine.score_single_evidence("industry_feedback", "verified", override_score=rating["rating"] * 20)
+            db.add(Evidence(
+                student_skill_id=ss.id, type="industry_feedback",
+                title=f"Industry feedback — {demo_opp.title}",
+                description=demo_feedback.comments, status="verified", signal_score=signal,
+            ))
+            db.flush()
+            evidences = [{"type": e.type, "status": e.status, "signal_score": e.signal_score} for e in ss.evidences]
+            result = evidence_engine.recompute_student_skill(evidences)
+            ss.proficiency_score = result["proficiency_score"]
+            ss.confidence_level = result["confidence_level"]
+
         db.commit()
         print("Seed complete.")
         print("Login credentials:")
@@ -322,6 +384,7 @@ def run():
         print("  College:  college@gradustry.dev / college123")
         print("  Student:  student@gradustry.dev / student123")
         print("  Industry: industry@gradustry.dev / industry123")
+        print("  Industry 2 (Vertex Analytics): industry2@gradustry.dev / industry123")
         print("  Academician: academician@gradustry.dev / academician123")
     finally:
         db.close()

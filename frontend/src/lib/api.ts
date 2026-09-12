@@ -160,6 +160,13 @@ export const achievementApi = {
   remove: (id: number) => api.delete(`/students/me/achievements/${id}`),
 };
 
+export interface EvidenceSummaryItem {
+  type: string
+  status: string
+  signal_score: number
+  title: string
+}
+
 export interface GapItem {
   skill_name: string
   current_score: number
@@ -167,6 +174,10 @@ export interface GapItem {
   gap: number
   severity: "matched" | "low" | "medium" | "high"
   priority: "High" | "Medium" | "Low" | "None"
+  verification_state: "demonstrated" | "partially_demonstrated" | "missing" | "unverified"
+  confidence_level: string
+  evidence_count: number
+  evidence_summary: EvidenceSummaryItem[]
   reason: string
   reasons: string[]
   missing_subskills: string[]
@@ -196,6 +207,7 @@ export interface SkillRoadmap {
   baseline_score: number
   target_score: number
   current_score: number
+  target_role: string
   steps: RoadmapStepT[]
   resources: LearningResource[]
 }
@@ -233,12 +245,34 @@ export interface OpportunityOut {
   created_at: string;
 }
 
+export interface SkillBreakdownItem {
+  skill_name: string;
+  current_score: number;
+  required_score: number;
+  percent_of_requirement: number;
+  verification_state: "demonstrated" | "partially_demonstrated" | "missing" | "unverified";
+  weight: number;
+}
+
+export interface EligibilityCheck {
+  check: string;
+  passed: boolean;
+  detail: string;
+}
+
 export interface MatchExplanation {
   matched_skills: string[];
   below_target_skills: string[];
   missing_eligibility: string[];
+  eligibility_checks: EligibilityCheck[];
+  skill_breakdown: SkillBreakdownItem[];
   relevant_evidence_count: number;
   is_eligible: boolean;
+  strengths?: string[];
+  weaknesses?: string[];
+  related_skills_recognized?: string[];
+  recommendation_reason?: string;
+  ai_enhanced?: boolean;
 }
 
 export interface OpportunityMatch {
@@ -312,9 +346,9 @@ export const gapApi = {
     api.get<GapReport>(
       `/gap/report?role_title=${encodeURIComponent(roleTitle)}`,
     ),
-  generateRoadmap: (skillName: string, targetScore = 70) =>
+  generateRoadmap: (skillName: string, targetScore = 70, targetRole = "") =>
     api.post<SkillRoadmap>(
-      `/gap/roadmap/${encodeURIComponent(skillName)}/generate?target_score=${targetScore}`,
+      `/gap/roadmap/${encodeURIComponent(skillName)}/generate?target_score=${targetScore}&target_role=${encodeURIComponent(targetRole)}`,
     ),
   getRoadmap: (skillName: string) =>
     api.get<SkillRoadmap>(`/gap/roadmap/${encodeURIComponent(skillName)}`),

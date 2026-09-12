@@ -21,6 +21,7 @@ class OpportunityCreate(BaseModel):
     duration: str = ""              # e.g. "6 weeks" — Learning Hub programs
     capacity: Optional[int] = None  # seats available; None = unlimited
     eligibility_notes: str = ""     # free-text eligibility beyond year/final_year
+    application_deadline: Optional[datetime] = None
     required_skills: list[RequiredSkillIn] = []
 
 
@@ -47,6 +48,7 @@ class OpportunityOut(BaseModel):
     duration: str = ""
     capacity: Optional[int] = None
     eligibility_notes: str = ""
+    application_deadline: Optional[datetime] = None
     enrolled_count: int = 0
     required_skills: list[RequiredSkillOut]
     created_at: datetime
@@ -55,10 +57,27 @@ class OpportunityOut(BaseModel):
         from_attributes = True
 
 
+class EligibilityCheckOut(BaseModel):
+    check: str
+    passed: bool
+    detail: str
+
+
+class SkillBreakdownItem(BaseModel):
+    skill_name: str
+    current_score: float
+    required_score: float
+    percent_of_requirement: float
+    verification_state: str  # demonstrated|partially_demonstrated|missing|unverified — same as Skill Gap Engine
+    weight: float
+
+
 class MatchExplanation(BaseModel):
     matched_skills: list[str]
     below_target_skills: list[str]
     missing_eligibility: list[str]
+    eligibility_checks: list[EligibilityCheckOut] = []
+    skill_breakdown: list[SkillBreakdownItem] = []
     relevant_evidence_count: int
     is_eligible: bool
     strengths: list[str] = []
@@ -100,6 +119,11 @@ class ApplicationStatusUpdate(BaseModel):
     status: str
 
 
+class SkillRatingIn(BaseModel):
+    skill_name: str
+    rating: float = Field(ge=0, le=5)  # observed proficiency, out of 5 — only for skills actually evaluated
+
+
 class IndustryFeedbackCreate(BaseModel):
     application_id: int
     technical_skill: float = Field(ge=0, le=10)
@@ -108,3 +132,8 @@ class IndustryFeedbackCreate(BaseModel):
     teamwork: float = Field(ge=0, le=10)
     professionalism: float = Field(ge=0, le=10)
     comments: str = ""
+    # Phase 5 — skill-specific ratings for skills genuinely observed/evaluated.
+    # Only these (not every one of the opportunity's required_skills) become
+    # Skill Passport evidence, so feedback never touches a skill that wasn't
+    # actually assessed.
+    skill_ratings: list[SkillRatingIn] = []

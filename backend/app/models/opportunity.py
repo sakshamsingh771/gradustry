@@ -27,6 +27,7 @@ class Opportunity(Base):
     duration: Mapped[str] = mapped_column(String(120), default="")  # e.g. "6 weeks", "1 day"
     capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)  # seats; None = unlimited
     eligibility_notes: Mapped[str] = mapped_column(Text, default="")  # free-text eligibility beyond year/final_year
+    application_deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -82,6 +83,10 @@ class IndustryFeedback(Base):
     teamwork: Mapped[float] = mapped_column(Float, default=0.0)
     professionalism: Mapped[float] = mapped_column(Float, default=0.0)
     comments: Mapped[str] = mapped_column(Text, default="")
+    # Phase 5 — provenance of exactly which skills were rated and at what
+    # observed proficiency (out of 5), so evidence created from this feedback
+    # can always be traced back to what was actually submitted.
+    skill_ratings: Mapped[list] = mapped_column(JSON, default=list)  # [{skill_name, rating}]
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     application = relationship("Application", back_populates="feedback")
