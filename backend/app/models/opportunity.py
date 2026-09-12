@@ -23,6 +23,10 @@ class Opportunity(Base):
     min_year_of_study: Mapped[int] = mapped_column(Integer, default=1)
     final_year_only: Mapped[bool] = mapped_column(Integer, default=0)  # 0/1 as sqlite-friendly bool
     stipend_or_ctc: Mapped[str] = mapped_column(String(120), default="")
+    # Learning Hub fields (Phase 3) — reused for internships/jobs too, optional there.
+    duration: Mapped[str] = mapped_column(String(120), default="")  # e.g. "6 weeks", "1 day"
+    capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)  # seats; None = unlimited
+    eligibility_notes: Mapped[str] = mapped_column(Text, default="")  # free-text eligibility beyond year/final_year
     is_active: Mapped[bool] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

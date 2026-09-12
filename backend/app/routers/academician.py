@@ -151,13 +151,13 @@ def list_college_students(db: Session = Depends(get_db), user: User = Depends(re
         CollegeMembership.college_id == membership.college_id,
         CollegeMembership.status == MembershipStatus.verified,
     ).all()
+    readiness_map = career_readiness.compute_bulk(db, students)
     out = []
     for s in students:
-        readiness = career_readiness.compute_for_student(db, s)["overall_readiness"]
         out.append({
             "student_id": s.id, "full_name": s.user.full_name if s.user else "Unknown",
             "branch": s.branch, "year_of_study": s.year_of_study,
-            "career_goal": s.career_goal, "readiness": readiness,
+            "career_goal": s.career_goal, "readiness": readiness_map.get(s.id, {}).get("overall_readiness", 0.0),
         })
     return out
 

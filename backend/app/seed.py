@@ -216,6 +216,78 @@ def run():
             opportunity_id=faculty_opp.id, academician_id=academician.id, status="applied",
         ))
 
+        guest_lecture_opp = Opportunity(
+            industry_id=industry.id, title="Guest Lecture: Modern Cloud Architecture Patterns (Demo)",
+            role_type="guest_lecture", audience="academician",
+            description="One-session guest lecture invitation for faculty to deliver to CSE students. Demo/seed data.",
+            location="On-site", duration="2 hours",
+        )
+        db.add(guest_lecture_opp)
+        db.flush()
+        db.add(Application(
+            opportunity_id=guest_lecture_opp.id, academician_id=academician.id, status="completed",
+        ))
+
+        # --- Phase 3: Industry Learning Hub demo programs (audience="student") ---
+        # Clearly marked as demo/seed data, not real postings.
+        learning_programs = [
+            dict(title="Full-Stack Web Development Bootcamp (Demo)", role_type="course",
+                 description="Guided, project-based course covering React + FastAPI. Demo/seed data.",
+                 duration="6 weeks", capacity=30,
+                 eligibility_notes="Open to all branches, 2nd year and above.",
+                 skills=[("React", 50, 1.2), ("Python", 50, 1.0)]),
+            dict(title="Hands-on Kubernetes Workshop (Demo)", role_type="workshop",
+                 description="One-day intensive workshop on container orchestration. Demo/seed data.",
+                 duration="1 day", capacity=50,
+                 eligibility_notes="Basic Docker knowledge recommended.",
+                 skills=[("Docker", 40, 1.0)]),
+            dict(title="AI for Good Innovation Challenge (Demo)", role_type="innovation_challenge",
+                 description="48-hour hackathon building ML solutions for social-impact problems. Demo/seed data.",
+                 duration="48 hours", capacity=100,
+                 eligibility_notes="Teams of up to 4; at least one member with ML basics.",
+                 skills=[("Machine Learning", 40, 1.0)]),
+            dict(title="Cloud Practitioner Certification Prep (Demo)", role_type="certification",
+                 description="Structured prep track with a completion certificate on finishing all modules. Demo/seed data.",
+                 duration="4 weeks", capacity=None,
+                 eligibility_notes="No prior cloud experience required.",
+                 skills=[("AWS", 30, 1.0)]),
+            dict(title="1:1 Career Mentorship Track (Demo)", role_type="mentorship",
+                 description="Paired mentorship with a Nimbus Cloud engineer over one semester. Demo/seed data.",
+                 duration="1 semester", capacity=15,
+                 eligibility_notes="Final-year students preferred.",
+                 skills=[("Communication", 30, 0.8)]),
+            dict(title="Open Source Contribution Sprint (Demo)", role_type="live_project",
+                 description="Contribute real PRs to Nimbus Cloud's open-source SDK under engineer supervision. Demo/seed data.",
+                 duration="3 weeks", capacity=10,
+                 eligibility_notes="Comfortable with Git and one of Python/JavaScript.",
+                 skills=[("Git", 40, 1.0), ("Python", 40, 0.8)]),
+        ]
+        seeded_opps = {}
+        for prog in learning_programs:
+            p_opp = Opportunity(
+                industry_id=industry.id, title=prog["title"], role_type=prog["role_type"], audience="student",
+                description=prog["description"], location="Remote", duration=prog["duration"],
+                capacity=prog["capacity"], eligibility_notes=prog["eligibility_notes"],
+            )
+            db.add(p_opp)
+            db.flush()
+            for skill_name, min_p, weight in prog["skills"]:
+                if skill_name in skill_objs:
+                    db.add(OpportunitySkill(opportunity_id=p_opp.id, skill_id=skill_objs[skill_name].id, min_proficiency=min_p, weight=weight))
+            seeded_opps[prog["role_type"]] = p_opp
+        db.flush()
+
+        # Demo end-to-end completion pipeline: student enrolls in the course and
+        # completes it, which — through the real (non-fabricated) mechanism —
+        # creates verified evidence and updates the Skill Passport.
+        from app.routers.opportunities import _record_completion_evidence
+        course_app = Application(opportunity_id=seeded_opps["course"].id, student_id=student.id, status="applied")
+        db.add(course_app)
+        db.flush()
+        course_app.status = "completed"
+        db.flush()
+        _record_completion_evidence(db, course_app)
+
         from app.models.community import Community, CommunityType
         for name, description in [
             ("AI & Machine Learning", "Discuss ML models, papers, and projects."),

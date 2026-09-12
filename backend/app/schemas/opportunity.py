@@ -18,6 +18,9 @@ class OpportunityCreate(BaseModel):
     min_year_of_study: int = 1
     final_year_only: bool = False
     stipend_or_ctc: str = ""
+    duration: str = ""              # e.g. "6 weeks" — Learning Hub programs
+    capacity: Optional[int] = None  # seats available; None = unlimited
+    eligibility_notes: str = ""     # free-text eligibility beyond year/final_year
     required_skills: list[RequiredSkillIn] = []
 
 
@@ -41,6 +44,10 @@ class OpportunityOut(BaseModel):
     min_year_of_study: int
     final_year_only: bool
     stipend_or_ctc: str
+    duration: str = ""
+    capacity: Optional[int] = None
+    eligibility_notes: str = ""
+    enrolled_count: int = 0
     required_skills: list[RequiredSkillOut]
     created_at: datetime
 

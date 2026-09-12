@@ -15,6 +15,12 @@ interface ReqSkill { skill_name: string; min_proficiency: number; weight: number
 const STUDENT_ROLE_TYPES = [
   { value: "internship", label: "Internship" },
   { value: "job", label: "Job" },
+  { value: "course", label: "Course (Learning Hub)" },
+  { value: "workshop", label: "Workshop (Learning Hub)" },
+  { value: "innovation_challenge", label: "Innovation Challenge (Learning Hub)" },
+  { value: "certification", label: "Certification Program (Learning Hub)" },
+  { value: "mentorship", label: "Mentorship Program (Learning Hub)" },
+  { value: "live_project", label: "Live Industry Project (Learning Hub)" },
 ]
 const ACADEMICIAN_ROLE_TYPES = [
   { value: "faculty_internship", label: "Faculty Internship" },
@@ -24,15 +30,23 @@ const ACADEMICIAN_ROLE_TYPES = [
   { value: "research_collaboration", label: "Research Collaboration" },
   { value: "guest_lecture", label: "Guest Lecture" },
   { value: "mentorship", label: "Mentorship" },
+  { value: "workshop", label: "Workshop" },
 ]
+
+const LEARNING_HUB_TYPES = new Set(["course", "workshop", "innovation_challenge", "certification", "mentorship", "live_project"])
 
 export default function IndustryOpportunities() {
   const qc = useQueryClient()
   const oppsQ = useQuery({ queryKey: ["my-opportunities"], queryFn: () => opportunityApi.mine().then((r) => r.data) })
-  const [form, setForm] = useState({ title: "", role_type: "internship", audience: "student" as "student" | "academician", description: "", location: "Remote", min_year_of_study: 1, final_year_only: false, stipend_or_ctc: "" })
+  const [form, setForm] = useState({
+    title: "", role_type: "internship", audience: "student" as "student" | "academician",
+    description: "", location: "Remote", min_year_of_study: 1, final_year_only: false,
+    stipend_or_ctc: "", duration: "", capacity: "" as string | number, eligibility_notes: "",
+  })
   const [skills, setSkills] = useState<ReqSkill[]>([{ skill_name: "", min_proficiency: 60, weight: 1 }])
 
   const roleTypeOptions = form.audience === "academician" ? ACADEMICIAN_ROLE_TYPES : STUDENT_ROLE_TYPES
+  const isLearningHub = form.audience === "student" && LEARNING_HUB_TYPES.has(form.role_type)
 
   const setAudience = (audience: "student" | "academician") => {
     const defaultRoleType = audience === "academician" ? ACADEMICIAN_ROLE_TYPES[0].value : STUDENT_ROLE_TYPES[0].value
@@ -42,15 +56,16 @@ export default function IndustryOpportunities() {
   const createMutation = useMutation({
     mutationFn: () => opportunityApi.create({
       ...form,
-      required_skills: form.audience === "student" ? skills.filter((s) => s.skill_name) : [],
+      capacity: form.capacity === "" ? null : Number(form.capacity),
+      required_skills: skills.filter((s) => s.skill_name),
     }),
     onSuccess: () => {
-      toast.success("Opportunity posted")
+      toast.success("Posted")
       qc.invalidateQueries({ queryKey: ["my-opportunities"] })
-      setForm({ title: "", role_type: "internship", audience: "student", description: "", location: "Remote", min_year_of_study: 1, final_year_only: false, stipend_or_ctc: "" })
+      setForm({ title: "", role_type: "internship", audience: "student", description: "", location: "Remote", min_year_of_study: 1, final_year_only: false, stipend_or_ctc: "", duration: "", capacity: "", eligibility_notes: "" })
       setSkills([{ skill_name: "", min_proficiency: 60, weight: 1 }])
     },
-    onError: () => toast.error("Couldn't post opportunity"),
+    onError: () => toast.error("Couldn't post"),
   })
 
   const updateSkill = (i: number, patch: Partial<ReqSkill>) =>
@@ -58,11 +73,11 @@ export default function IndustryOpportunities() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-2xl">Opportunities</h1>
+      <h1 className="font-display text-2xl">Opportunities & Learning Hub</h1>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
-          <CardHeader><CardTitle>Post a new opportunity</CardTitle><CardDescription>For students, or for academicians (FDP, consultancy, research, guest lecture, mentorship)</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Post a new listing</CardTitle><CardDescription>Internships/jobs, faculty collaboration, or a Learning Hub program (course, workshop, challenge, certification, mentorship, live project)</CardDescription></CardHeader>
           <CardContent>
             <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); createMutation.mutate() }}>
               <div className="space-y-1.5">
@@ -85,12 +100,22 @@ export default function IndustryOpportunities() {
               </div>
               <div className="space-y-1.5"><Label>Description</Label><Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></div>
 
+              {isLearningHub && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label>Duration</Label><Input placeholder="e.g. 6 weeks" value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>Seats (capacity)</Label><Input type="number" min={1} placeholder="Unlimited" value={form.capacity} onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))} /></div>
+                </div>
+              )}
+              {isLearningHub && (
+                <div className="space-y-1.5"><Label>Eligibility notes</Label><Input placeholder="e.g. Open to all branches, 2nd year+" value={form.eligibility_notes} onChange={(e) => setForm((f) => ({ ...f, eligibility_notes: e.target.value }))} /></div>
+              )}
+
               {form.audience === "student" && (
                 <>
                   <div className="space-y-1.5"><Label>Min. year of study</Label><Input type="number" min={1} max={5} value={form.min_year_of_study} onChange={(e) => setForm((f) => ({ ...f, min_year_of_study: Number(e.target.value) }))} /></div>
 
                   <div className="space-y-2">
-                    <Label>Required skills</Label>
+                    <Label>Relevant skills {isLearningHub && "(what completion demonstrates)"}</Label>
                     {skills.map((s, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <Input placeholder="Skill" value={s.skill_name} onChange={(e) => updateSkill(i, { skill_name: e.target.value })} />
@@ -101,11 +126,14 @@ export default function IndustryOpportunities() {
                     <Button type="button" variant="outline" size="sm" onClick={() => setSkills((s) => [...s, { skill_name: "", min_proficiency: 60, weight: 1 }])}>
                       <Plus className="h-3.5 w-3.5" /> Add skill
                     </Button>
+                    {isLearningHub && (
+                      <p className="text-xs text-muted">When you mark a participant's status "completed", verified evidence for these skills is added to their Skill Passport automatically.</p>
+                    )}
                   </div>
                 </>
               )}
 
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>{createMutation.isPending ? "Posting…" : "Post opportunity"}</Button>
+              <Button type="submit" className="w-full" disabled={createMutation.isPending}>{createMutation.isPending ? "Posting…" : "Post"}</Button>
             </form>
           </CardContent>
         </Card>
@@ -117,20 +145,23 @@ export default function IndustryOpportunities() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <CardTitle>{o.title}</CardTitle>
-                    <CardDescription>{o.location} · {o.stipend_or_ctc || "Unpaid"}</CardDescription>
+                    <CardDescription>
+                      {o.location}{o.duration ? ` · ${o.duration}` : ""} · {o.stipend_or_ctc || "Unpaid"}
+                      {o.capacity != null && ` · ${o.enrolled_count}/${o.capacity} seats filled`}
+                    </CardDescription>
                   </div>
                   <Badge variant={o.audience === "academician" ? "default" : "outline"} className="capitalize">
-                    {o.audience === "academician" ? "Faculty" : "Student"}
+                    {o.audience === "academician" ? "Faculty" : "Student"} · {o.role_type.replace("_", " ")}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {o.required_skills.map((s) => (
-                  <span key={s.skill_name} className="rounded-full bg-surface-alt px-2.5 py-1 text-xs">{s.skill_name} ≥ {s.min_proficiency}%</span>
-                ))}
-                {o.audience === "academician" && !o.required_skills.length && (
-                  <span className="text-xs text-muted capitalize">{o.role_type.replace("_", " ")}</span>
-                )}
+              <CardContent className="space-y-2">
+                {o.eligibility_notes && <p className="text-xs text-muted">Eligibility: {o.eligibility_notes}</p>}
+                <div className="flex flex-wrap gap-2">
+                  {o.required_skills.map((s) => (
+                    <span key={s.skill_name} className="rounded-full bg-surface-alt px-2.5 py-1 text-xs">{s.skill_name} ≥ {s.min_proficiency}%</span>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           ))}

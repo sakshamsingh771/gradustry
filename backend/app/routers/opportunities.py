@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import require_roles
 from app.models.user import User, StudentProfile, IndustryProfile
-from app.models.skill import Skill, StudentSkill, Evidence
+from app.models.skill import Skill, StudentSkill, Evidence, SkillScoreHistory
 from app.models.opportunity import Opportunity, OpportunitySkill, Application, IndustryFeedback
 from app.schemas.opportunity import (
     OpportunityCreate, OpportunityOut, OpportunityMatchOut, ApplyRequest,
@@ -44,6 +44,8 @@ def _to_out(opp: Opportunity) -> OpportunityOut:
             "weight": rs.weight,
         })
 
+    enrolled_count = sum(1 for a in opp.applications if a.status != "rejected")
+
     return OpportunityOut(
         id=opp.id,
         title=opp.title,
@@ -55,6 +57,10 @@ def _to_out(opp: Opportunity) -> OpportunityOut:
         min_year_of_study=opp.min_year_of_study,
         final_year_only=bool(opp.final_year_only),
         stipend_or_ctc=opp.stipend_or_ctc,
+        duration=opp.duration,
+        capacity=opp.capacity,
+        eligibility_notes=opp.eligibility_notes,
+        enrolled_count=enrolled_count,
         created_at=opp.created_at,
         required_skills=required_skills_data,
     )
@@ -70,6 +76,49 @@ def _student_skill_map(db: Session, student_id: int) -> Dict[str, Dict[str, Any]
                 "evidence_count": len(r.evidences),
             }
     return skills_map
+
+
+def _record_completion_evidence(db: Session, app_: Application) -> None:
+    """Create verified 'industry_program_completion' evidence for each skill the
+    opportunity actually declared, and recompute the affected StudentSkill rows
+    through the existing evidence engine. No-op if the opportunity has no
+    required_skills — completion alone (e.g. attending a guest lecture with no
+    listed skills) never fabricates a skill score."""
+    opp = app_.opportunity
+    if not opp or not opp.required_skills:
+        return
+    company_name = opp.industry.company_name if opp.industry else "an industry partner"
+
+    for rs in opp.required_skills:
+        if not rs.skill:
+            continue
+        ss = db.query(StudentSkill).filter(
+            StudentSkill.student_id == app_.student_id, StudentSkill.skill_id == rs.skill_id
+        ).first()
+        if not ss:
+            ss = StudentSkill(student_id=app_.student_id, skill_id=rs.skill_id, proficiency_score=0.0, confidence_level="None")
+            db.add(ss)
+            db.flush()
+
+        signal = evidence_engine.score_single_evidence("industry_program_completion", "verified")
+        db.add(Evidence(
+            student_skill_id=ss.id,
+            type="industry_program_completion",
+            title=f"Completed: {opp.title}",
+            description=f"Verified completion recorded by {company_name} ({opp.role_type.replace('_', ' ')}).",
+            status="verified",
+            signal_score=signal,
+        ))
+        db.flush()
+
+        evidences = [{"type": e.type, "status": e.status, "signal_score": e.signal_score} for e in ss.evidences]
+        result = evidence_engine.recompute_student_skill(evidences)
+        ss.proficiency_score = result["proficiency_score"]
+        ss.confidence_level = result["confidence_level"]
+        ss.last_assessed_at = datetime.utcnow()
+        db.add(SkillScoreHistory(student_skill_id=ss.id, score=ss.proficiency_score, reason="industry program completion"))
+
+    db.commit()
 
 
 @router.get("/{opportunity_id}/candidates")
@@ -154,6 +203,9 @@ def create_opportunity(
         min_year_of_study=payload.min_year_of_study,
         final_year_only=int(payload.final_year_only),
         stipend_or_ctc=payload.stipend_or_ctc,
+        duration=payload.duration,
+        capacity=payload.capacity,
+        eligibility_notes=payload.eligibility_notes,
     )
     db.add(opp)
     db.flush()
@@ -237,6 +289,13 @@ async def apply(payload: ApplyRequest, db: Session = Depends(get_db), user: User
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="You have already applied to this opportunity")
+
+    if opp.capacity is not None:
+        active_count = db.query(Application).filter(
+            Application.opportunity_id == opp.id, Application.status != "rejected"
+        ).count()
+        if active_count >= opp.capacity:
+            raise HTTPException(status_code=400, detail="This program has reached its seat capacity")
 
     student_skills = _student_skill_map(db, profile.id)
     required = []
@@ -367,10 +426,21 @@ def update_application_status(
     }
     if payload.status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Status must be one of {sorted(valid_statuses)}")
-        
+
+    old_status = app_.status
     app_.status = payload.status
     db.commit()
     db.refresh(app_)
+
+    # STEP 3 (Phase 3): a genuine transition into "completed" for a student
+    # applicant creates real, verified evidence tied to the opportunity's
+    # declared required skills, then recomputes the Skill Passport through
+    # the existing evidence engine. Guarded so it only fires once per
+    # transition (not on repeated no-op status writes), and only when the
+    # opportunity actually declared skills — no skill is ever awarded
+    # without a concrete evidence record backing it.
+    if payload.status == "completed" and old_status != "completed" and app_.student_id is not None:
+        _record_completion_evidence(db, app_)
     
     opp_title = app_.opportunity.title if app_.opportunity else "Unknown Opportunity"
 

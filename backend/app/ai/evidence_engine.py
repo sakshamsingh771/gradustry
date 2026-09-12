@@ -20,6 +20,7 @@ TYPE_BASE_SIGNAL = {
     "assessment": 70.0,          # objective, so weighted highest
     "industry_feedback": 75.0,   # real-world validation, weighted highest
     "resume": 35.0,              # AI-extracted from a resume, least verified — lowest base signal
+    "industry_program_completion": 60.0,  # verified completion of an industry-run learning program
 }
 
 STATUS_MULTIPLIER = {
@@ -75,6 +76,7 @@ def explain(evidences: list[dict]) -> list[str]:
             "project": "Project submission",
             "assessment": "Assessment",
             "industry_feedback": "Industry feedback",
+            "industry_program_completion": "Industry program completion",
         }.get(e["type"], e["type"].title())
         lines.append(f"{label} — {e['status'].replace('_', ' ')} (signal {e['signal_score']}/100)")
     return lines

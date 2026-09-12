@@ -13,6 +13,7 @@ const roleTypeLabels: Record<string, string> = {
   research_collaboration: "Research Collaboration",
   guest_lecture: "Guest Lecture",
   mentorship: "Mentorship",
+  workshop: "Workshop",
 }
 
 export default function AcademicianOpportunities() {

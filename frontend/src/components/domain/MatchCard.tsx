@@ -11,7 +11,10 @@ export function MatchCard({ match, onApply, applied, onCloseGap }: { match: Oppo
       <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
         <div>
           <CardTitle>{o.title}</CardTitle>
-          <CardDescription>{o.company_name} · {o.location} · {o.role_type}</CardDescription>
+          <CardDescription>
+            {o.company_name} · {o.location} · {o.role_type.replace("_", " ")}
+            {o.duration ? ` · ${o.duration}` : ""}
+          </CardDescription>
         </div>
         <div className="text-right shrink-0">
           <div className="font-display text-2xl tabular-nums text-accent">{match_score.toFixed(0)}%</div>
@@ -43,8 +46,14 @@ export function MatchCard({ match, onApply, applied, onCloseGap }: { match: Oppo
           ))}
         </div>
         <p className="text-xs text-muted">{ex.relevant_evidence_count} relevant evidence items considered</p>
-        <Button className="w-full" disabled={applied} onClick={onApply}>
-          {applied ? "Applied" : ex.is_eligible ? "Apply now" : "Become eligible / apply anyway"}
+        {o.eligibility_notes && <p className="text-xs text-muted">Eligibility: {o.eligibility_notes}</p>}
+        {o.capacity != null && (
+          <p className="text-xs text-muted">
+            {Math.max(o.capacity - o.enrolled_count, 0)} of {o.capacity} seats left
+          </p>
+        )}
+        <Button className="w-full" disabled={applied || (o.capacity != null && o.enrolled_count >= o.capacity && !applied)} onClick={onApply}>
+          {applied ? "Applied" : (o.capacity != null && o.enrolled_count >= o.capacity) ? "Full" : ex.is_eligible ? "Apply now" : "Become eligible / apply anyway"}
         </Button>
       </CardContent>
     </Card>

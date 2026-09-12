@@ -221,6 +221,10 @@ export interface OpportunityOut {
   min_year_of_study: number;
   final_year_only: boolean;
   stipend_or_ctc: string;
+  duration: string;
+  capacity: number | null;
+  eligibility_notes: string;
+  enrolled_count: number;
   required_skills: {
     skill_name: string;
     min_proficiency: number;
@@ -355,9 +359,63 @@ export const opportunityApi = {
 };
 
 // ---------- College ----------
+export interface CollegeFilters {
+  branch?: string;
+  year_of_study?: number;
+  career_goal?: string;
+  skill?: string;
+}
+
+export interface CollegeDashboard {
+  college_name: string;
+  total_students: number;
+  total_academicians: number;
+  average_readiness: number;
+  students_by_skill_level: { Beginner: number; Intermediate: number; Advanced: number };
+  skill_development_progress: { has_data: boolean; current_avg: number; previous_avg: number; delta: number };
+  internship_participation: { students_applied: number; students_selected: number; participation_rate: number };
+  placement_readiness: { ready_count: number; ready_rate: number; average_readiness: number };
+  opportunities: { active_engaged: number; completed_engagements: number };
+  industry_collaboration: { distinct_industry_partners: number; total_engagements: number };
+}
+
+export interface CollegeSkillAnalytics {
+  top_skills: { skill_name: string; average_score: number; student_count: number }[];
+  common_gaps: { skill_name: string; average_score: number; student_count: number }[];
+  proficiency_distribution: { range: string; count: number }[];
+  readiness_trend: { week: string; average_score: number; data_points: number }[];
+  emerging_skills: { skill_name: string; opportunities_requiring: number; students_with_skill: number }[];
+}
+
+export interface CollegeInternshipAnalytics {
+  total_applications: number;
+  shortlisted: number;
+  selected: number;
+  rejected: number;
+  in_process: number;
+  distinct_students_participated: number;
+  distinct_students_selected: number;
+  placement_readiness: { ready_count: number; ready_rate: number };
+  monthly_trend: { month: string; applications: number }[];
+}
+
+export interface CollegeCollaborationAnalytics {
+  total_academicians: number;
+  total_engagements: number;
+  distinct_industry_partners: number;
+  by_category: { category: string; total: number; by_status: Record<string, number> }[];
+  by_status: Record<string, number>;
+}
+
+const toQuery = (f?: CollegeFilters) => (f ? { params: f } : undefined);
+
 export const collegeApi = {
-  dashboard: () => api.get("/college/dashboard"),
-  students: () => api.get("/college/students"),
+  dashboard: (f?: CollegeFilters) => api.get<CollegeDashboard>("/college/dashboard", toQuery(f)),
+  students: (f?: CollegeFilters) => api.get("/college/students", toQuery(f)),
+  filters: () => api.get<{ branches: string[]; years_of_study: number[]; career_goals: string[]; skills: string[] }>("/college/filters"),
+  skillAnalytics: (f?: CollegeFilters) => api.get<CollegeSkillAnalytics>("/college/analytics/skills", toQuery(f)),
+  internshipAnalytics: (f?: CollegeFilters) => api.get<CollegeInternshipAnalytics>("/college/analytics/internships", toQuery(f)),
+  collaborationAnalytics: () => api.get<CollegeCollaborationAnalytics>("/college/analytics/collaboration"),
 };
 
 // ---------- Academician ----------
